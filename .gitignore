@@ -1,0 +1,12 @@
+# Cada microservicio y la configuración tienen su propio repositorio git.
+/config-server/
+/config-repo/
+/customer-service/
+/account-service/
+/credit-service/
+/transaction-service/
+
+### IDE / SO ###
+.idea/
+*.iml
+.DS_Store
