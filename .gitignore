@@ -1,4 +1,6 @@
 # Cada microservicio y la configuración tienen su propio repositorio git.
+/discovery-server/
+/api-gateway/
 /config-server/
 /config-repo/
 /customer-service/
