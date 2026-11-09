@@ -1,5 +1,5 @@
-# Levanta la solución completa: MongoDB, discovery-server (Eureka), config-server y los
-# cuatro microservicios.
+# Levanta la solución completa: MongoDB, discovery-server (Eureka), config-server, api-gateway y
+# los cuatro microservicios.
 # Uso: docker compose up --build
 # Los puertos publicados en el host se pueden cambiar con las variables *_PORT.
 name: bank
@@ -49,6 +49,19 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+  api-gateway:
+    build: ./api-gateway
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_URL: http://discovery-server:8761/eureka/
+    ports:
+      - "${API_GATEWAY_PORT:-8080}:8080"
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
 
   customer-service:
     build: ./customer-service
