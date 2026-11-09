@@ -1,4 +1,5 @@
-# Levanta la solución completa: MongoDB, config-server y los cuatro microservicios.
+# Levanta la solución completa: MongoDB, discovery-server (Eureka), config-server y los
+# cuatro microservicios.
 # Uso: docker compose up --build
 # Los puertos publicados en el host se pueden cambiar con las variables *_PORT.
 name: bank
@@ -16,6 +17,18 @@ services:
       timeout: 5s
       retries: 10
 
+  discovery-server:
+    build: ./discovery-server
+    environment:
+      EUREKA_HOSTNAME: discovery-server
+    ports:
+      - "${DISCOVERY_SERVER_PORT:-8761}:8761"
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   config-server:
     build: ./config-server
     environment:
@@ -23,10 +36,14 @@ services:
       # para que el contenedor no haga checkout ni escriba en el repositorio git del host.
       SPRING_PROFILES_ACTIVE: native
       SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS: file:/config-repo/
+      EUREKA_URL: http://discovery-server:8761/eureka/
     volumes:
       - ./config-repo:/config-repo:ro
     ports:
       - "${CONFIG_SERVER_PORT:-8888}:8888"
+    depends_on:
+      discovery-server:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-fs", "http://localhost:8888/actuator/health"]
       interval: 10s
@@ -37,10 +54,13 @@ services:
     build: ./customer-service
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_URL: http://discovery-server:8761/eureka/
       MONGODB_URI: mongodb://mongo:27017/customer_db
     ports:
       - "${CUSTOMER_SERVICE_PORT:-8081}:8081"
     depends_on:
+      discovery-server:
+        condition: service_healthy
       config-server:
         condition: service_healthy
       mongo:
@@ -50,11 +70,14 @@ services:
     build: ./account-service
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_URL: http://discovery-server:8761/eureka/
       MONGODB_URI: mongodb://mongo:27017/account_db
       CUSTOMER_SERVICE_URL: http://customer-service:8081
     ports:
       - "${ACCOUNT_SERVICE_PORT:-8082}:8082"
     depends_on:
+      discovery-server:
+        condition: service_healthy
       config-server:
         condition: service_healthy
       mongo:
@@ -64,11 +87,14 @@ services:
     build: ./credit-service
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_URL: http://discovery-server:8761/eureka/
       MONGODB_URI: mongodb://mongo:27017/credit_db
       CUSTOMER_SERVICE_URL: http://customer-service:8081
     ports:
       - "${CREDIT_SERVICE_PORT:-8083}:8083"
     depends_on:
+      discovery-server:
+        condition: service_healthy
       config-server:
         condition: service_healthy
       mongo:
@@ -78,12 +104,15 @@ services:
     build: ./transaction-service
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_URL: http://discovery-server:8761/eureka/
       MONGODB_URI: mongodb://mongo:27017/transaction_db
       ACCOUNT_SERVICE_URL: http://account-service:8082
       CREDIT_SERVICE_URL: http://credit-service:8083
     ports:
       - "${TRANSACTION_SERVICE_PORT:-8084}:8084"
     depends_on:
+      discovery-server:
+        condition: service_healthy
       config-server:
         condition: service_healthy
       mongo:
