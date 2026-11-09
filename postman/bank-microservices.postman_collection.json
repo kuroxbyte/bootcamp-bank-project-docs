@@ -1,0 +1,2101 @@
+{
+  "info": {
+    "_postman_id": "83e697a1-d31e-5801-b8e7-d6780e73a86c",
+    "name": "Sistema bancario — microservicios",
+    "description": "Verificación funcional de los cuatro microservicios. Ejecutar las carpetas en orden: cada paso guarda los ids que usan los siguientes (variables de la colección).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Clientes (customer-service)",
+      "description": "Crear y consultar clientes.",
+      "item": [
+        {
+          "name": "Crear cliente personal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('es personal', () => pm.expect(pm.response.json().type).to.eql('PERSONAL'));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('personalCustomerId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{customerUrl}}/api/v1/customers",
+              "host": [
+                "{{customerUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Ana Torres\", \"type\": \"PERSONAL\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear cliente empresarial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('businessCustomerId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{customerUrl}}/api/v1/customers",
+              "host": [
+                "{{customerUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Comercial Andina SAC\", \"type\": \"BUSINESS\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consultar cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('devuelve el cliente', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('personalCustomerId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{customerUrl}}/api/v1/customers/{{personalCustomerId}}",
+              "host": [
+                "{{customerUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "{{personalCustomerId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar cliente inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{customerUrl}}/api/v1/customers/000000000000000000000000",
+              "host": [
+                "{{customerUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "000000000000000000000000"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Crear cliente sin nombre (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{customerUrl}}/api/v1/customers",
+              "host": [
+                "{{customerUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"type\": \"PERSONAL\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Cuentas bancarias (account-service)",
+      "description": "Apertura y consulta de cuentas con las reglas por tipo de cliente.",
+      "item": [
+        {
+          "name": "Abrir cuenta de ahorro personal (límite 2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('es de ahorro', () => pm.expect(pm.response.json().type).to.eql('SAVINGS'));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('savingsAccountId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/savings",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "savings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"maxMonthlyMovements\": 2}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Segunda cuenta de ahorro personal (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/savings",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "savings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"maxMonthlyMovements\": 2}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cuenta de ahorro empresarial (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/savings",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "savings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"maxMonthlyMovements\": 2}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Abrir cuenta corriente empresarial con titulares",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('tiene un titular', () => pm.expect(pm.response.json().holderIds).to.have.lengthOf(1));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('checkingAccountId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/checking",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "checking"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"maintenanceFee\": 15.0, \"holderIds\": [\"{{personalCustomerId}}\"], \"authorizedSignerIds\": []}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cuenta corriente empresarial sin titulares (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/checking",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "checking"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"maintenanceFee\": 15.0, \"holderIds\": [], \"authorizedSignerIds\": []}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Abrir cuenta a plazo fijo personal (día de hoy)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// La fecha la asigna el servidor; en Docker los contenedores usan UTC.",
+                  "pm.collectionVariables.set('todayDay', new Date().getUTCDate());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('fixedTermAccountId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/fixed-term",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "fixed-term"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"movementDayOfMonth\": {{todayDay}}}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cuenta a plazo fijo empresarial (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/fixed-term",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "fixed-term"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"movementDayOfMonth\": 15}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cuenta con día de movimiento inválido (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/fixed-term",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "fixed-term"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"movementDayOfMonth\": 40}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cuenta para cliente inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{unknownCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/savings",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "savings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"maxMonthlyMovements\": 2}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Listar cuentas del cliente personal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tiene ahorro y plazo fijo', () => pm.expect(pm.response.json()).to.have.lengthOf(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar cuenta por id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/{{savingsAccountId}}",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{savingsAccountId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar cuentas sin X-Customer-Id (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Créditos y tarjetas (credit-service)",
+      "description": "Otorgamiento y consulta de productos de crédito.",
+      "item": [
+        {
+          "name": "Otorgar crédito personal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('personalCreditId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{creditUrl}}/api/v1/credits",
+              "host": [
+                "{{creditUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"type\": \"PERSONAL\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Segundo crédito personal (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{creditUrl}}/api/v1/credits",
+              "host": [
+                "{{creditUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"type\": \"PERSONAL\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Otorgar crédito empresarial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('businessCreditId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{creditUrl}}/api/v1/credits",
+              "host": [
+                "{{creditUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"type\": \"BUSINESS\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crédito personal a una empresa (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{creditUrl}}/api/v1/credits",
+              "host": [
+                "{{creditUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"type\": \"PERSONAL\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Otorgar tarjeta de crédito empresarial (límite 1000)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('creditCardId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{creditUrl}}/api/v1/credit-cards",
+              "host": [
+                "{{creditUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"creditLimit\": 1000}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Tarjeta con límite 0 (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{creditUrl}}/api/v1/credit-cards",
+              "host": [
+                "{{creditUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"creditLimit\": 0}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consultar crédito por id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('es empresarial', () => pm.expect(pm.response.json().type).to.eql('BUSINESS'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{creditUrl}}/api/v1/credits/{{businessCreditId}}",
+              "host": [
+                "{{creditUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credits",
+                "{{businessCreditId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar tarjeta por id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('límite 1000', () => pm.expect(pm.response.json().creditLimit).to.eql(1000));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{creditUrl}}/api/v1/credit-cards/{{creditCardId}}",
+              "host": [
+                "{{creditUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards",
+                "{{creditCardId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar tarjeta inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{creditUrl}}/api/v1/credit-cards/000000000000000000000000",
+              "host": [
+                "{{creditUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards",
+                "000000000000000000000000"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar créditos del cliente empresarial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tiene un crédito', () => pm.expect(pm.response.json()).to.have.lengthOf(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{creditUrl}}/api/v1/credits",
+              "host": [
+                "{{creditUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credits"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar tarjetas del cliente empresarial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tiene una tarjeta', () => pm.expect(pm.response.json()).to.have.lengthOf(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{creditUrl}}/api/v1/credit-cards",
+              "host": [
+                "{{creditUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Transacciones de cuentas (transaction-service)",
+      "description": "Depósitos, retiros, saldo y movimientos.",
+      "item": [
+        {
+          "name": "Depositar 100 en la cuenta de ahorro",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('es un depósito', () => pm.expect(pm.response.json().type).to.eql('DEPOSIT'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{savingsAccountId}}/deposits",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{savingsAccountId}}",
+                "deposits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 100}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Retirar 150 sin saldo suficiente (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{savingsAccountId}}/withdrawals",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{savingsAccountId}}",
+                "withdrawals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 150}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Retirar 30",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{savingsAccountId}}/withdrawals",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{savingsAccountId}}",
+                "withdrawals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 30}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Tercer movimiento del mes con límite 2 (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{savingsAccountId}}/deposits",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{savingsAccountId}}",
+                "deposits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 5}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consultar saldo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saldo 70', () => pm.expect(pm.response.json().balance).to.eql(70));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{savingsAccountId}}/balance",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{savingsAccountId}}",
+                "balance"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar movimientos de la cuenta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('dos movimientos', () => pm.expect(pm.response.json()).to.have.lengthOf(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{savingsAccountId}}/movements",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{savingsAccountId}}",
+                "movements"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Saldo pedido por otro cliente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{savingsAccountId}}/balance",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{savingsAccountId}}",
+                "balance"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Depositar en plazo fijo el día configurado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{fixedTermAccountId}}/deposits",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{fixedTermAccountId}}",
+                "deposits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 500}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Segundo movimiento de plazo fijo en el mes (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{fixedTermAccountId}}/withdrawals",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{fixedTermAccountId}}",
+                "withdrawals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 10}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Depósito con monto 0 (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{savingsAccountId}}/deposits",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{savingsAccountId}}",
+                "deposits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 0}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Pagos de créditos (transaction-service)",
+      "description": "Pagos y movimientos de créditos.",
+      "item": [
+        {
+          "name": "Pagar 50 al crédito personal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('pago a un crédito', () => pm.expect(pm.response.json().target).to.eql('CREDIT'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credits/{{personalCreditId}}/payments",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credits",
+                "{{personalCreditId}}",
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 50}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Pagar el crédito de otro cliente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credits/{{personalCreditId}}/payments",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credits",
+                "{{personalCreditId}}",
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 50}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consultar movimientos del crédito",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('un pago', () => pm.expect(pm.response.json()).to.have.lengthOf(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credits/{{personalCreditId}}/movements",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credits",
+                "{{personalCreditId}}",
+                "movements"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Tarjetas de crédito (transaction-service)",
+      "description": "Consumos según el límite de crédito, pagos, crédito disponible y movimientos.",
+      "item": [
+        {
+          "name": "Consumir 800",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credit-cards/{{creditCardId}}/charges",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards",
+                "{{creditCardId}}",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 800}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consumir 300 sobre el disponible (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credit-cards/{{creditCardId}}/charges",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards",
+                "{{creditCardId}}",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 300}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Pagar 200 a la tarjeta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('pago a una tarjeta', () => pm.expect(pm.response.json().target).to.eql('CREDIT_CARD'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credit-cards/{{creditCardId}}/payments",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards",
+                "{{creditCardId}}",
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 200}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consultar crédito disponible",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('disponible 400', () => pm.expect(pm.response.json().availableCredit).to.eql(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credit-cards/{{creditCardId}}/available-credit",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards",
+                "{{creditCardId}}",
+                "available-credit"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar movimientos de la tarjeta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('un consumo y un pago, ordenados por fecha', () => pm.expect(pm.response.json().map(m => m.type)).to.have.members(['CHARGE', 'PAYMENT']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credit-cards/{{creditCardId}}/movements",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards",
+                "{{creditCardId}}",
+                "movements"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "personalCustomerId",
+      "value": ""
+    },
+    {
+      "key": "businessCustomerId",
+      "value": ""
+    },
+    {
+      "key": "unknownCustomerId",
+      "value": "000000000000000000000000"
+    },
+    {
+      "key": "savingsAccountId",
+      "value": ""
+    },
+    {
+      "key": "checkingAccountId",
+      "value": ""
+    },
+    {
+      "key": "fixedTermAccountId",
+      "value": ""
+    },
+    {
+      "key": "todayDay",
+      "value": ""
+    },
+    {
+      "key": "personalCreditId",
+      "value": ""
+    },
+    {
+      "key": "businessCreditId",
+      "value": ""
+    },
+    {
+      "key": "creditCardId",
+      "value": ""
+    }
+  ]
+}

@@ -22,3 +22,8 @@ Los puertos publicados en el host se pueden cambiar con `MONGO_PORT`, `CONFIG_SE
 
 En Docker, config-server lee los archivos de `config-repo` montados en solo lectura (perfil
 `native`). Al ejecutarlo localmente, los lee desde el repositorio git (rama `main`).
+
+## Documentación
+
+- `docs/diagrams/`: diagramas UML en draw.io (diseño de la solución y diagramas de secuencia).
+- `postman/`: colección y entorno de Postman para verificar las funcionalidades.
