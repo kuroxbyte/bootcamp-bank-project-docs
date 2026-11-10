@@ -19,7 +19,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('responde 201', () => pm.response.to.have.status(201));",
-                  "pm.test('es personal', () => pm.expect(pm.response.json().type).to.eql('PERSONAL'));",
+                  "pm.test('es personal estándar', () => { pm.expect(pm.response.json().type).to.eql('PERSONAL'); pm.expect(pm.response.json().profile).to.eql('STANDARD'); });",
                   "if (pm.response.code === 201) { pm.collectionVariables.set('personalCustomerId', pm.response.json().id); }"
                 ]
               }
@@ -46,7 +46,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"name\": \"Ana Torres\", \"type\": \"PERSONAL\"}",
+              "raw": "{\"name\": \"Ana Torres\", \"type\": \"PERSONAL\", \"profile\": \"STANDARD\"}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -90,7 +90,185 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"name\": \"Comercial Andina SAC\", \"type\": \"BUSINESS\"}",
+              "raw": "{\"name\": \"Comercial Andina SAC\", \"type\": \"BUSINESS\", \"profile\": \"STANDARD\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear cliente personal VIP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('es VIP', () => pm.expect(pm.response.json().profile).to.eql('VIP'));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('vipCustomerId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{customerUrl}}/api/v1/customers",
+              "host": [
+                "{{customerUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Lucía Paredes\", \"type\": \"PERSONAL\", \"profile\": \"VIP\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear cliente empresarial PYME",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('es PYME', () => pm.expect(pm.response.json().profile).to.eql('PYME'));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('pymeCustomerId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{customerUrl}}/api/v1/customers",
+              "host": [
+                "{{customerUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Taller Rivera EIRL\", \"type\": \"BUSINESS\", \"profile\": \"PYME\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Perfil VIP para una empresa (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{customerUrl}}/api/v1/customers",
+              "host": [
+                "{{customerUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Empresa\", \"type\": \"BUSINESS\", \"profile\": \"VIP\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear cliente sin perfil (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{customerUrl}}/api/v1/customers",
+              "host": [
+                "{{customerUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Sin perfil\", \"type\": \"PERSONAL\"}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -196,7 +374,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"type\": \"PERSONAL\"}",
+              "raw": "{\"type\": \"PERSONAL\", \"profile\": \"STANDARD\"}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2199,6 +2377,14 @@
     },
     {
       "key": "businessCustomerId",
+      "value": ""
+    },
+    {
+      "key": "vipCustomerId",
+      "value": ""
+    },
+    {
+      "key": "pymeCustomerId",
       "value": ""
     },
     {
