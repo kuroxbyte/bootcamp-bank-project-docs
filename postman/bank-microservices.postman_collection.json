@@ -2368,6 +2368,491 @@
           }
         }
       ]
+    },
+    {
+      "name": "7. Productos VIP y PYME",
+      "description": "Ahorro VIP (mínimo de promedio diario) y corriente PYME (sin comisión); ambas exigen una tarjeta de crédito con el banco al abrirlas.",
+      "item": [
+        {
+          "name": "Ahorro VIP sin tarjeta de crédito (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{vipCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/savings",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "savings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"maxMonthlyMovements\": 10, \"openingAmount\": 600}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Corriente PYME sin tarjeta de crédito (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{pymeCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/checking",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "checking"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"holderIds\": [\"{{pymeCustomerId}}\"], \"openingAmount\": 0}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Otorgar tarjeta de crédito al cliente VIP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{vipCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{creditUrl}}/api/v1/credit-cards",
+              "host": [
+                "{{creditUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"creditLimit\": 2000}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Otorgar tarjeta de crédito al cliente PYME",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{pymeCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{creditUrl}}/api/v1/credit-cards",
+              "host": [
+                "{{creditUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"creditLimit\": 3000}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Abrir cuenta de ahorro VIP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('exige promedio diario mínimo de 500', () => pm.expect(pm.response.json().minimumDailyAverage).to.eql(500));",
+                  "pm.test('tiene fecha de apertura', () => pm.expect(pm.response.json().openedAt).to.match(/^\\d{4}-\\d{2}-\\d{2}$/));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('vipSavingsAccountId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{vipCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/savings",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "savings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"maxMonthlyMovements\": 10, \"openingAmount\": 600}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Corriente PYME con comisión (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{pymeCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/checking",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "checking"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"maintenanceFee\": 10, \"holderIds\": [\"{{pymeCustomerId}}\"], \"openingAmount\": 0}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Abrir cuenta corriente PYME sin comisión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('comisión 0', () => pm.expect(pm.response.json().maintenanceFee).to.eql(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{pymeCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/checking",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "checking"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"holderIds\": [\"{{pymeCustomerId}}\"], \"openingAmount\": 0}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consultar promedio diario de la cuenta VIP (mes actual)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('currentMonth', new Date().toISOString().slice(0, 7));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('promedio 600, alcanza el mínimo de 500', () => { const a = pm.response.json(); pm.expect(a.averageDailyBalance).to.eql(600); pm.expect(a.minimumDailyAverage).to.eql(500); pm.expect(a.meetsMinimum).to.eql(true); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{vipCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{vipSavingsAccountId}}/daily-average?month={{currentMonth}}",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{vipSavingsAccountId}}",
+                "daily-average"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "{{currentMonth}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Promedio diario con mes inválido (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{vipCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{vipSavingsAccountId}}/daily-average?month=2026-13",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{vipSavingsAccountId}}",
+                "daily-average"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "2026-13"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Promedio diario de un mes anterior a la apertura (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{vipCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{vipSavingsAccountId}}/daily-average?month=2000-01",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{vipSavingsAccountId}}",
+                "daily-average"
+              ],
+              "query": [
+                {
+                  "key": "month",
+                  "value": "2000-01"
+                }
+              ]
+            }
+          }
+        }
+      ]
     }
   ],
   "variable": [
@@ -2417,6 +2902,14 @@
     },
     {
       "key": "creditCardId",
+      "value": ""
+    },
+    {
+      "key": "vipSavingsAccountId",
+      "value": ""
+    },
+    {
+      "key": "currentMonth",
       "value": ""
     }
   ]
