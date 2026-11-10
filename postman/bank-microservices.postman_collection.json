@@ -252,7 +252,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"maxMonthlyMovements\": 2}",
+              "raw": "{\"maxMonthlyMovements\": 2, \"openingAmount\": 0}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -301,7 +301,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"maxMonthlyMovements\": 2}",
+              "raw": "{\"maxMonthlyMovements\": 2, \"openingAmount\": 0}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -350,7 +350,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"maxMonthlyMovements\": 2}",
+              "raw": "{\"maxMonthlyMovements\": 2, \"openingAmount\": 0}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -369,6 +369,7 @@
                 "exec": [
                   "pm.test('responde 201', () => pm.response.to.have.status(201));",
                   "pm.test('tiene un titular', () => pm.expect(pm.response.json().holderIds).to.have.lengthOf(1));",
+                  "pm.test('guarda el monto de apertura y el mínimo', () => { const a = pm.response.json(); pm.expect(a.openingAmount).to.eql(200); pm.expect(a.minimumOpeningAmount).to.eql(0); });",
                   "if (pm.response.code === 201) { pm.collectionVariables.set('checkingAccountId', pm.response.json().id); }"
                 ]
               }
@@ -400,7 +401,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"maintenanceFee\": 15.0, \"holderIds\": [\"{{personalCustomerId}}\"], \"authorizedSignerIds\": []}",
+              "raw": "{\"maintenanceFee\": 15.0, \"holderIds\": [\"{{personalCustomerId}}\"], \"authorizedSignerIds\": [], \"openingAmount\": 200}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -449,7 +450,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"maintenanceFee\": 15.0, \"holderIds\": [], \"authorizedSignerIds\": []}",
+              "raw": "{\"maintenanceFee\": 15.0, \"holderIds\": [], \"authorizedSignerIds\": [], \"openingAmount\": 0}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -508,7 +509,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"movementDayOfMonth\": {{todayDay}}}",
+              "raw": "{\"movementDayOfMonth\": {{todayDay}}, \"openingAmount\": 0}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -557,7 +558,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"movementDayOfMonth\": 15}",
+              "raw": "{\"movementDayOfMonth\": 15, \"openingAmount\": 0}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -606,7 +607,105 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"movementDayOfMonth\": 40}",
+              "raw": "{\"movementDayOfMonth\": 40, \"openingAmount\": 0}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cuenta con monto de apertura negativo (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/savings",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "savings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"maxMonthlyMovements\": 2, \"openingAmount\": -10}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cuenta sin monto de apertura (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/savings",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "savings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"maxMonthlyMovements\": 2}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -655,7 +754,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"maxMonthlyMovements\": 2}",
+              "raw": "{\"maxMonthlyMovements\": 2, \"openingAmount\": 0}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1491,6 +1590,43 @@
                 "accounts",
                 "{{savingsAccountId}}",
                 "movements"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Saldo de la cuenta corriente = monto de apertura",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saldo 200', () => pm.expect(pm.response.json().balance).to.eql(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{checkingAccountId}}/balance",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{checkingAccountId}}",
+                "balance"
               ]
             }
           }
