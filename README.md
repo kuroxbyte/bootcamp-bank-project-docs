@@ -22,8 +22,9 @@ docker compose up --build
 Los puertos publicados en el host se pueden cambiar con `MONGO_PORT`, `API_GATEWAY_PORT`, `DISCOVERY_SERVER_PORT`, `CONFIG_SERVER_PORT`,
 `CUSTOMER_SERVICE_PORT`, `ACCOUNT_SERVICE_PORT`, `CREDIT_SERVICE_PORT` y `TRANSACTION_SERVICE_PORT`.
 
-Tras arrancar, el gateway tarda unos 30 segundos en conocer todas las instancias registradas en
-Eureka; mientras tanto puede responder 503 en algunas rutas.
+El gateway y las llamadas entre servicios encuentran los servicios en Eureka (discovery-server):
+un servicio que arranca o se reinicia vuelve a estar disponible en unos 5 segundos. Para ejecutar
+los servicios fuera de Docker también hay que levantar discovery-server.
 
 Las llamadas entre servicios y las rutas del gateway usan circuit breaker (Resilience4j) con un
 timeout de 2 segundos; si un servicio no responde a tiempo, falla o tiene su circuito abierto, se
