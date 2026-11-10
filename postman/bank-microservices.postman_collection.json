@@ -399,6 +399,7 @@
                 "exec": [
                   "pm.test('responde 201', () => pm.response.to.have.status(201));",
                   "pm.test('es de ahorro', () => pm.expect(pm.response.json().type).to.eql('SAVINGS'));",
+                  "pm.test('4 transacciones al mes sin comisión, luego 1.00', () => { const a = pm.response.json(); pm.expect(a.freeMonthlyTransactions).to.eql(4); pm.expect(a.transactionFee).to.eql(1); });",
                   "if (pm.response.code === 201) { pm.collectionVariables.set('savingsAccountId', pm.response.json().id); }"
                 ]
               }
@@ -2674,7 +2675,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('responde 201', () => pm.response.to.have.status(201));",
-                  "pm.test('comisión 0', () => pm.expect(pm.response.json().maintenanceFee).to.eql(0));"
+                  "pm.test('comisión 0', () => pm.expect(pm.response.json().maintenanceFee).to.eql(0));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('pymeCheckingAccountId', pm.response.json().id); }"
                 ]
               }
             }
@@ -2853,6 +2855,423 @@
           }
         }
       ]
+    },
+    {
+      "name": "8. Comisión por transacción",
+      "description": "Cuenta corriente PYME: 3 transacciones al mes sin comisión; desde la cuarta, 2.00 por transacción, descontada del saldo.",
+      "item": [
+        {
+          "name": "Depósito 1 de 100 (sin comisión)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('comisión 0', () => pm.expect(pm.response.json().commission).to.eql(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{pymeCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{pymeCheckingAccountId}}/deposits",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{pymeCheckingAccountId}}",
+                "deposits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 100}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Depósito 2 de 100 (sin comisión)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('comisión 0', () => pm.expect(pm.response.json().commission).to.eql(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{pymeCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{pymeCheckingAccountId}}/deposits",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{pymeCheckingAccountId}}",
+                "deposits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 100}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Depósito 3 de 100 (sin comisión)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('comisión 0', () => pm.expect(pm.response.json().commission).to.eql(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{pymeCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{pymeCheckingAccountId}}/deposits",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{pymeCheckingAccountId}}",
+                "deposits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 100}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Depósito 4 de 100 (paga comisión)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('comisión 2', () => pm.expect(pm.response.json().commission).to.eql(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{pymeCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{pymeCheckingAccountId}}/deposits",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{pymeCheckingAccountId}}",
+                "deposits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 100}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Saldo descuenta la comisión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saldo 398', () => pm.expect(pm.response.json().balance).to.eql(398));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{pymeCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{pymeCheckingAccountId}}/balance",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{pymeCheckingAccountId}}",
+                "balance"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Retiro que no cubre monto + comisión (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{pymeCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{pymeCheckingAccountId}}/withdrawals",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{pymeCheckingAccountId}}",
+                "withdrawals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 397}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Retiro de 300 (paga comisión)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('comisión 2', () => pm.expect(pm.response.json().commission).to.eql(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{pymeCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{pymeCheckingAccountId}}/withdrawals",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{pymeCheckingAccountId}}",
+                "withdrawals"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 300}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Saldo después del retiro",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saldo 96', () => pm.expect(pm.response.json().balance).to.eql(96));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{pymeCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{pymeCheckingAccountId}}/balance",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{pymeCheckingAccountId}}",
+                "balance"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Movimientos muestran la comisión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('dos transacciones con comisión 2', () => pm.expect(pm.response.json().filter(m => m.commission === 2)).to.have.lengthOf(2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{pymeCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{pymeCheckingAccountId}}/movements",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{pymeCheckingAccountId}}",
+                "movements"
+              ]
+            }
+          }
+        }
+      ]
     }
   ],
   "variable": [
@@ -2910,6 +3329,10 @@
     },
     {
       "key": "currentMonth",
+      "value": ""
+    },
+    {
+      "key": "pymeCheckingAccountId",
       "value": ""
     }
   ]
