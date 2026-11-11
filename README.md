@@ -19,8 +19,22 @@ Carpeta raíz de la solución. Cada microservicio y la configuración tienen su 
 docker compose up --build
 ```
 
-Los puertos publicados en el host se pueden cambiar con `MONGO_PORT`, `API_GATEWAY_PORT`, `DISCOVERY_SERVER_PORT`, `CONFIG_SERVER_PORT`,
-`CUSTOMER_SERVICE_PORT`, `ACCOUNT_SERVICE_PORT`, `CREDIT_SERVICE_PORT` y `TRANSACTION_SERVICE_PORT`.
+Cada microservicio tiene su propia instancia de MongoDB con su propio volumen:
+
+| Microservicio | Contenedor | Base de datos | Puerto en el host |
+|---|---|---|---|
+| customer-service | `customer-db` | `customer_db` | 27017 |
+| account-service | `account-db` | `account_db` | 27018 |
+| credit-service | `credit-db` | `credit_db` | 27019 |
+| transaction-service | `transaction-db` | `transaction_db` | 27020 |
+
+Fuera de Docker, cada servicio usa por defecto su instancia en `localhost` con ese puerto
+(se cambia con `MONGODB_URI`).
+
+Los puertos publicados en el host se pueden cambiar con `CUSTOMER_DB_PORT`, `ACCOUNT_DB_PORT`,
+`CREDIT_DB_PORT`, `TRANSACTION_DB_PORT`, `API_GATEWAY_PORT`, `DISCOVERY_SERVER_PORT`,
+`CONFIG_SERVER_PORT`, `CUSTOMER_SERVICE_PORT`, `ACCOUNT_SERVICE_PORT`, `CREDIT_SERVICE_PORT` y
+`TRANSACTION_SERVICE_PORT`.
 
 El gateway y las llamadas entre servicios encuentran los servicios en Eureka (discovery-server):
 un servicio que arranca o se reinicia vuelve a estar disponible en unos 5 segundos. Para ejecutar

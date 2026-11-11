@@ -1,21 +1,46 @@
-# Levanta la solución completa: MongoDB, discovery-server (Eureka), config-server, api-gateway y
-# los cuatro microservicios.
+# Levanta la solución completa: discovery-server (Eureka), config-server, api-gateway y los cuatro
+# microservicios, cada uno con su propia instancia de MongoDB (base de datos por servicio).
 # Uso: docker compose up --build
 # Los puertos publicados en el host se pueden cambiar con las variables *_PORT.
 name: bank
 
+# Configuración común de las instancias de MongoDB.
+x-mongo: &mongo
+  image: mongo:7.0
+  healthcheck:
+    test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+    interval: 10s
+    timeout: 5s
+    retries: 10
+
 services:
-  mongo:
-    image: mongo:7.0
+  customer-db:
+    <<: *mongo
     ports:
-      - "${MONGO_PORT:-27017}:27017"
+      - "${CUSTOMER_DB_PORT:-27017}:27017"
     volumes:
-      - mongo-data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+      - customer-data:/data/db
+
+  account-db:
+    <<: *mongo
+    ports:
+      - "${ACCOUNT_DB_PORT:-27018}:27017"
+    volumes:
+      - account-data:/data/db
+
+  credit-db:
+    <<: *mongo
+    ports:
+      - "${CREDIT_DB_PORT:-27019}:27017"
+    volumes:
+      - credit-data:/data/db
+
+  transaction-db:
+    <<: *mongo
+    ports:
+      - "${TRANSACTION_DB_PORT:-27020}:27017"
+    volumes:
+      - transaction-data:/data/db
 
   discovery-server:
     build: ./discovery-server
@@ -68,7 +93,7 @@ services:
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_URL: http://discovery-server:8761/eureka/
-      MONGODB_URI: mongodb://mongo:27017/customer_db
+      MONGODB_URI: mongodb://customer-db:27017/customer_db
     ports:
       - "${CUSTOMER_SERVICE_PORT:-8081}:8081"
     depends_on:
@@ -76,7 +101,7 @@ services:
         condition: service_healthy
       config-server:
         condition: service_healthy
-      mongo:
+      customer-db:
         condition: service_healthy
 
   account-service:
@@ -84,7 +109,7 @@ services:
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_URL: http://discovery-server:8761/eureka/
-      MONGODB_URI: mongodb://mongo:27017/account_db
+      MONGODB_URI: mongodb://account-db:27017/account_db
     ports:
       - "${ACCOUNT_SERVICE_PORT:-8082}:8082"
     depends_on:
@@ -92,7 +117,7 @@ services:
         condition: service_healthy
       config-server:
         condition: service_healthy
-      mongo:
+      account-db:
         condition: service_healthy
 
   credit-service:
@@ -100,7 +125,7 @@ services:
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_URL: http://discovery-server:8761/eureka/
-      MONGODB_URI: mongodb://mongo:27017/credit_db
+      MONGODB_URI: mongodb://credit-db:27017/credit_db
     ports:
       - "${CREDIT_SERVICE_PORT:-8083}:8083"
     depends_on:
@@ -108,7 +133,7 @@ services:
         condition: service_healthy
       config-server:
         condition: service_healthy
-      mongo:
+      credit-db:
         condition: service_healthy
 
   transaction-service:
@@ -116,7 +141,7 @@ services:
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_URL: http://discovery-server:8761/eureka/
-      MONGODB_URI: mongodb://mongo:27017/transaction_db
+      MONGODB_URI: mongodb://transaction-db:27017/transaction_db
     ports:
       - "${TRANSACTION_SERVICE_PORT:-8084}:8084"
     depends_on:
@@ -124,8 +149,11 @@ services:
         condition: service_healthy
       config-server:
         condition: service_healthy
-      mongo:
+      transaction-db:
         condition: service_healthy
 
 volumes:
-  mongo-data:
+  customer-data:
+  account-data:
+  credit-data:
+  transaction-data:
