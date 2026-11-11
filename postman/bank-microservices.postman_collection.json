@@ -3235,7 +3235,7 @@
           }
         },
         {
-          "name": "Movimientos muestran la comisión",
+          "name": "Movimientos muestran cada comisión como movimiento propio",
           "event": [
             {
               "listen": "test",
@@ -3243,7 +3243,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('dos transacciones con comisión 2', () => pm.expect(pm.response.json().filter(m => m.commission === 2)).to.have.lengthOf(2));"
+                  "pm.test('dos comisiones de 2 (tipo COMMISSION)', () => { const c = pm.response.json().filter(m => m.type === 'COMMISSION'); pm.expect(c).to.have.lengthOf(2); c.forEach(m => pm.expect(m.amount).to.eql(2)); });",
+                  "pm.test('cada comisión va después de la transacción que la generó', () => { const m = pm.response.json(); m.forEach((x, i) => { if (x.type === 'COMMISSION') pm.expect(['DEPOSIT', 'WITHDRAWAL']).to.include(m[i - 1].type); }); });"
                 ]
               }
             }
