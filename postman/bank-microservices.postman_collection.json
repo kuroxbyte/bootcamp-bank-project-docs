@@ -3934,6 +3934,664 @@
           }
         }
       ]
+    },
+    {
+      "name": "10. Reportes (transaction-service)",
+      "description": "Reporte general del banco por tipo de producto en un intervalo y últimos 10 movimientos de una tarjeta de crédito. Los valores del reporte suman todo el banco: se verifican mínimos, por si la colección ya se ejecutó antes sobre la misma base.",
+      "item": [
+        {
+          "name": "Reporte general por producto (mes actual)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const today = new Date().toISOString().slice(0, 10);",
+                  "pm.collectionVariables.set('reportFrom', today.slice(0, 8) + '01');",
+                  "pm.collectionVariables.set('reportTo', today);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('un resumen por cada tipo de producto', () => pm.expect(pm.response.json().products.map(p => p.productType)).to.eql(['SAVINGS', 'CHECKING', 'FIXED_TERM', 'PERSONAL_CREDIT', 'BUSINESS_CREDIT', 'CREDIT_CARD']));",
+                  "pm.test('productos abiertos en el mes', () => { pm.expect(pm.response.json().products.find(p => p.productType === 'SAVINGS').openedProducts).to.be.at.least(2); pm.expect(pm.response.json().products.find(p => p.productType === 'CHECKING').openedProducts).to.be.at.least(3); pm.expect(pm.response.json().products.find(p => p.productType === 'CREDIT_CARD').openedProducts).to.be.at.least(3); pm.expect(pm.response.json().products.find(p => p.productType === 'PERSONAL_CREDIT').openedProducts).to.be.at.least(1); pm.expect(pm.response.json().products.find(p => p.productType === 'BUSINESS_CREDIT').openedProducts).to.be.at.least(1); });",
+                  "pm.test('corriente con transferencias y comisiones', () => { const c = pm.response.json().products.find(p => p.productType === 'CHECKING'); pm.expect(c.commissions).to.be.at.least(6); pm.expect(c.movements.map(m => m.type)).to.include.members(['DEPOSIT', 'WITHDRAWAL', 'TRANSFER_IN', 'TRANSFER_OUT']); });",
+                  "pm.test('tarjeta con consumos y pagos', () => pm.expect(pm.response.json().products.find(p => p.productType === 'CREDIT_CARD').movements.map(m => m.type)).to.include.members(['CHARGE', 'PAYMENT']));",
+                  "pm.test('transacciones = suma de movimientos', () => pm.response.json().products.forEach(p => pm.expect(p.transactions).to.eql(p.movements.reduce((s, m) => s + m.count, 0))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/reports/products?from={{reportFrom}}&to={{reportTo}}",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reports",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{reportFrom}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{reportTo}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reporte con intervalo invertido (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/reports/products?from=2026-12-31&to=2026-01-01",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reports",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-12-31"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-01-01"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reporte sin fecha final (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/reports/products?from=2026-01-01",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reports",
+                "products"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-01-01"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consumo 1 de 1 en la tarjeta empresarial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credit-cards/{{creditCardId}}/charges",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards",
+                "{{creditCardId}}",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consumo 2 de 1 en la tarjeta empresarial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credit-cards/{{creditCardId}}/charges",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards",
+                "{{creditCardId}}",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consumo 3 de 1 en la tarjeta empresarial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credit-cards/{{creditCardId}}/charges",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards",
+                "{{creditCardId}}",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consumo 4 de 1 en la tarjeta empresarial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credit-cards/{{creditCardId}}/charges",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards",
+                "{{creditCardId}}",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consumo 5 de 1 en la tarjeta empresarial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credit-cards/{{creditCardId}}/charges",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards",
+                "{{creditCardId}}",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consumo 6 de 1 en la tarjeta empresarial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credit-cards/{{creditCardId}}/charges",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards",
+                "{{creditCardId}}",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consumo 7 de 1 en la tarjeta empresarial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credit-cards/{{creditCardId}}/charges",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards",
+                "{{creditCardId}}",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consumo 8 de 1 en la tarjeta empresarial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credit-cards/{{creditCardId}}/charges",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards",
+                "{{creditCardId}}",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consumo 9 de 1 en la tarjeta empresarial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credit-cards/{{creditCardId}}/charges",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards",
+                "{{creditCardId}}",
+                "charges"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Últimos 10 movimientos de la tarjeta de crédito",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('máximo 10 movimientos de tarjeta', () => { const m = pm.response.json(); pm.expect(m).to.have.lengthOf(10); m.forEach(x => pm.expect(['CHARGE', 'PAYMENT']).to.include(x.type)); });",
+                  "pm.test('del más reciente al más antiguo', () => { const d = pm.response.json().map(x => x.date); pm.expect(d).to.eql([...d].sort().reverse()); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/reports/credit-cards/{{creditCardId}}/last-movements",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reports",
+                "credit-cards",
+                "{{creditCardId}}",
+                "last-movements"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Últimos movimientos de la tarjeta de otro cliente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{personalCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/reports/credit-cards/{{creditCardId}}/last-movements",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reports",
+                "credit-cards",
+                "{{creditCardId}}",
+                "last-movements"
+              ]
+            }
+          }
+        }
+      ]
     }
   ],
   "variable": [
@@ -3999,6 +4657,14 @@
     },
     {
       "key": "secondCheckingAccountId",
+      "value": ""
+    },
+    {
+      "key": "reportFrom",
+      "value": ""
+    },
+    {
+      "key": "reportTo",
       "value": ""
     }
   ]
