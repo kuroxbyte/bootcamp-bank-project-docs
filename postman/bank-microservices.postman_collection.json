@@ -3272,6 +3272,668 @@
           }
         }
       ]
+    },
+    {
+      "name": "9. Transferencias (transaction-service)",
+      "description": "Entre cuentas propias y a terceros del mismo banco. Cuentan como retiro en el origen y depósito en el destino; cada cuenta paga su propia comisión.",
+      "item": [
+        {
+          "name": "Abrir segunda cuenta corriente empresarial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('secondCheckingAccountId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/checking",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "checking"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"maintenanceFee\": 15.0, \"holderIds\": [\"{{personalCustomerId}}\"], \"openingAmount\": 0}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Transferir 50 entre cuentas propias",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('propia y sin comisión', () => { const t = pm.response.json(); pm.expect(t.type).to.eql('OWN'); pm.expect(t.sourceCommission).to.eql(0); pm.expect(t.targetCommission).to.eql(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{checkingAccountId}}/transfers/own",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{checkingAccountId}}",
+                "transfers",
+                "own"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"targetAccountId\": \"{{secondCheckingAccountId}}\", \"amount\": 50}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Saldo de la cuenta origen",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saldo 150', () => pm.expect(pm.response.json().balance).to.eql(150));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{checkingAccountId}}/balance",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{checkingAccountId}}",
+                "balance"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Saldo de la cuenta destino propia",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saldo 50', () => pm.expect(pm.response.json().balance).to.eql(50));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{secondCheckingAccountId}}/balance",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{secondCheckingAccountId}}",
+                "balance"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Transferencia propia a cuenta de otro cliente (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{checkingAccountId}}/transfers/own",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{checkingAccountId}}",
+                "transfers",
+                "own"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"targetAccountId\": \"{{pymeCheckingAccountId}}\", \"amount\": 10}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Transferencia a la misma cuenta (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{checkingAccountId}}/transfers/own",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{checkingAccountId}}",
+                "transfers",
+                "own"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"targetAccountId\": \"{{checkingAccountId}}\", \"amount\": 10}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Transferir 30 a un tercero (destino paga su comisión)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('a tercero; el destino ya superó sus transacciones sin comisión', () => { const t = pm.response.json(); pm.expect(t.type).to.eql('THIRD_PARTY'); pm.expect(t.sourceCommission).to.eql(0); pm.expect(t.targetCommission).to.eql(2); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{checkingAccountId}}/transfers/third-party",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{checkingAccountId}}",
+                "transfers",
+                "third-party"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"targetAccountId\": \"{{pymeCheckingAccountId}}\", \"amount\": 30}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Saldo del tercero (96 + 30 − 2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saldo 124', () => pm.expect(pm.response.json().balance).to.eql(124));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{pymeCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{pymeCheckingAccountId}}/balance",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{pymeCheckingAccountId}}",
+                "balance"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Transferencia a terceros hacia cuenta propia (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{checkingAccountId}}/transfers/third-party",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{checkingAccountId}}",
+                "transfers",
+                "third-party"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"targetAccountId\": \"{{secondCheckingAccountId}}\", \"amount\": 10}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Transferencia mayor al saldo (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{secondCheckingAccountId}}/transfers/third-party",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{secondCheckingAccountId}}",
+                "transfers",
+                "third-party"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"targetAccountId\": \"{{pymeCheckingAccountId}}\", \"amount\": 500}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Transferencia a cuenta inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{checkingAccountId}}/transfers/third-party",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{checkingAccountId}}",
+                "transfers",
+                "third-party"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"targetAccountId\": \"000000000000000000000000\", \"amount\": 10}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Transferencia desde cuenta de otro cliente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{pymeCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{checkingAccountId}}/transfers/third-party",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{checkingAccountId}}",
+                "transfers",
+                "third-party"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"targetAccountId\": \"{{pymeCheckingAccountId}}\", \"amount\": 10}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Transferencia sin cuenta destino (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{checkingAccountId}}/transfers/own",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{checkingAccountId}}",
+                "transfers",
+                "own"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 10}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Movimientos muestran la transferencia recibida",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('una transferencia recibida de 50', () => { const m = pm.response.json(); pm.expect(m).to.have.lengthOf(1); pm.expect(m[0].type).to.eql('TRANSFER_IN'); pm.expect(m[0].amount).to.eql(50); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{secondCheckingAccountId}}/movements",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{secondCheckingAccountId}}",
+                "movements"
+              ]
+            }
+          }
+        }
+      ]
     }
   ],
   "variable": [
@@ -3333,6 +3995,10 @@
     },
     {
       "key": "pymeCheckingAccountId",
+      "value": ""
+    },
+    {
+      "key": "secondCheckingAccountId",
       "value": ""
     }
   ]

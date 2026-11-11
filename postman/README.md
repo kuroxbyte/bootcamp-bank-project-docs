@@ -4,7 +4,7 @@ El sistema no tiene interfaz gráfica; las funcionalidades se verifican con esta
 
 | Archivo | Contenido |
 |---|---|
-| `bank-microservices.postman_collection.json` | 72 peticiones en 8 carpetas (clientes, cuentas, créditos y tarjetas, transacciones de cuentas, pagos de créditos, tarjetas, productos VIP y PYME, comisión por transacción), con pruebas automáticas de código de respuesta, reglas de negocio y formato de errores. |
+| `bank-microservices.postman_collection.json` | 86 peticiones en 9 carpetas (clientes, cuentas, créditos y tarjetas, transacciones de cuentas, pagos de créditos, tarjetas, productos VIP y PYME, comisión por transacción, transferencias), con pruebas automáticas de código de respuesta, reglas de negocio y formato de errores. |
 | `bank-local.postman_environment.json` | URLs de los servicios en `localhost:8081` a `8084` (docker-compose o ejecución local). |
 | `bank-gateway.postman_environment.json` | Todas las peticiones por el API Gateway en `localhost:8080`. |
 
