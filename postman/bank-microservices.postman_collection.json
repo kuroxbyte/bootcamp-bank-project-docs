@@ -5330,7 +5330,429 @@
       ]
     },
     {
-      "name": "12. Deuda vencida (debt-service)",
+      "name": "12. Pagos de terceros (transaction-service)",
+      "description": "Un cliente puede pagar créditos y tarjetas de otros clientes del banco. El pago guarda quién pagó y reduce la deuda del dueño del producto.",
+      "item": [
+        {
+          "name": "Pagar el crédito empresarial de otro cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('pago a un crédito de un tercero', () => { const p = pm.response.json(); pm.expect(p.target).to.eql('CREDIT'); pm.expect(p.productId).to.eql(pm.collectionVariables.get('businessCreditId')); pm.expect(p.payerCustomerId).to.eql(pm.collectionVariables.get('personalCustomerId')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credits/{{businessCreditId}}/payments/third-party",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credits",
+                "{{businessCreditId}}",
+                "payments",
+                "third-party"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 100}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "El dueño ve el pago en los movimientos del crédito",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('incluye el pago de 100', () => pm.expect(pm.response.json().filter(m => m.type === 'PAYMENT' && m.amount === 100)).to.have.lengthOf(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credits/{{businessCreditId}}/movements",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credits",
+                "{{businessCreditId}}",
+                "movements"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Crédito disponible de la tarjeta del tercero (antes)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('guarda el crédito disponible', () => pm.collectionVariables.set('availableBefore', pm.response.json().availableCredit));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credit-cards/{{creditCardId}}/available-credit",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards",
+                "{{creditCardId}}",
+                "available-credit"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Pagar la tarjeta de otro cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('pago a la tarjeta de un tercero', () => { const p = pm.response.json(); pm.expect(p.target).to.eql('CREDIT_CARD'); pm.expect(p.payerCustomerId).to.eql(pm.collectionVariables.get('personalCustomerId')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credit-cards/{{creditCardId}}/payments/third-party",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards",
+                "{{creditCardId}}",
+                "payments",
+                "third-party"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 10}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "El pago libera crédito disponible del dueño",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('10 más de crédito disponible', () => pm.expect(pm.response.json().availableCredit).to.eql(Number(pm.collectionVariables.get('availableBefore')) + 10));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credit-cards/{{creditCardId}}/available-credit",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards",
+                "{{creditCardId}}",
+                "available-credit"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Pagar como tercero un crédito propio (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credits/{{personalCreditId}}/payments/third-party",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credits",
+                "{{personalCreditId}}",
+                "payments",
+                "third-party"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 10}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Pagar como tercero una tarjeta propia (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credit-cards/{{creditCardId}}/payments/third-party",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards",
+                "{{creditCardId}}",
+                "payments",
+                "third-party"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 10}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Pagar un crédito inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credits/000000000000000000000000/payments/third-party",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credits",
+                "000000000000000000000000",
+                "payments",
+                "third-party"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 10}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Pagar como propio el crédito de otro cliente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credits/{{businessCreditId}}/payments",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credits",
+                "{{businessCreditId}}",
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 10}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "13. Deuda vencida (debt-service)",
       "description": "Un cliente con deuda vencida en un producto de crédito no puede adquirir otro producto. Requiere docker-compose.e2e.yml: debt-service evalúa como si fuera pasado mañana, así el crédito que vence mañana queda vencido de inmediato.",
       "item": [
         {
@@ -5758,14 +6180,15 @@
           }
         },
         {
-          "name": "Pagar el saldo del crédito (600)",
+          "name": "Un tercero paga el saldo del crédito (600)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 201', () => pm.response.to.have.status(201));"
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('pagó el cliente personal', () => pm.expect(pm.response.json().payerCustomerId).to.eql(pm.collectionVariables.get('personalCustomerId')));"
                 ]
               }
             }
@@ -5779,11 +6202,11 @@
               },
               {
                 "key": "Authorization",
-                "value": "Bearer {{debtorToken}}"
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
-              "raw": "{{transactionUrl}}/api/v1/credits/{{debtorCreditId}}/payments",
+              "raw": "{{transactionUrl}}/api/v1/credits/{{debtorCreditId}}/payments/third-party",
               "host": [
                 "{{transactionUrl}}"
               ],
@@ -5792,7 +6215,8 @@
                 "v1",
                 "credits",
                 "{{debtorCreditId}}",
-                "payments"
+                "payments",
+                "third-party"
               ]
             },
             "body": {
@@ -5807,7 +6231,7 @@
           }
         },
         {
-          "name": "Sin deuda vencida abre la cuenta",
+          "name": "Pagado por un tercero, el moroso abre la cuenta",
           "event": [
             {
               "listen": "prerequest",
@@ -5868,7 +6292,7 @@
       ]
     },
     {
-      "name": "13. Seguridad (API Gateway)",
+      "name": "14. Seguridad (API Gateway)",
       "description": "El gateway exige un token válido y toma el id del cliente del token, no del header X-Customer-Id.",
       "item": [
         {
@@ -6025,6 +6449,10 @@
     },
     {
       "key": "debtorCreditId",
+      "value": ""
+    },
+    {
+      "key": "availableBefore",
       "value": ""
     },
     {
