@@ -206,7 +206,7 @@ components:
             description: Id del cliente
       payload:
         type: object
-        required: [eventType, eventId, creditId, customerId, amount, date, occurredAt]
+        required: [eventType, eventId, creditId, customerId, payerCustomerId, amount, date, occurredAt]
         properties:
           eventType:
             type: string
@@ -219,6 +219,10 @@ components:
             type: string
           customerId:
             type: string
+            description: Dueño del producto pagado; su deuda es la que baja
+          payerCustomerId:
+            type: string
+            description: Cliente que hizo el pago (el dueño o un tercero)
           amount:
             type: number
           date:
@@ -237,7 +241,7 @@ components:
             description: Id del cliente
       payload:
         type: object
-        required: [eventType, eventId, creditCardId, customerId, amount, date, occurredAt]
+        required: [eventType, eventId, creditCardId, customerId, payerCustomerId, amount, date, occurredAt]
         properties:
           eventType:
             type: string
@@ -250,6 +254,10 @@ components:
             type: string
           customerId:
             type: string
+            description: Dueño del producto pagado; su deuda es la que baja
+          payerCustomerId:
+            type: string
+            description: Cliente que hizo el pago (el dueño o un tercero)
           amount:
             type: number
           date:

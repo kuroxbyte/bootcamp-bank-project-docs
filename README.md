@@ -91,6 +91,15 @@ APIs de otros microservicios. Los datos maestros se leen con caché en Redis.
   Redis (cache-aside, 10 minutos, configurable con `CACHE_CUSTOMERS_TTL`).
 - El contrato de los eventos está en `docs/events/asyncapi.yaml`.
 
+## Pagos de terceros
+
+Un cliente puede pagar créditos y tarjetas de otros clientes del banco con
+`POST /api/v1/credits/{creditId}/payments/third-party` y
+`POST /api/v1/credit-cards/{creditCardId}/payments/third-party` (si el producto es propio, 422; los
+pagos propios siguen en `/payments`). El pago no se descuenta de ninguna cuenta, guarda quién pagó
+(`payerCustomerId`) y reduce la deuda del dueño del producto: el evento del pago lleva al dueño como
+cliente, así un tercero también puede saldar una deuda vencida.
+
 ## Deuda vencida
 
 Un cliente con deuda vencida en algún producto de crédito no puede adquirir otro producto: abrir una
