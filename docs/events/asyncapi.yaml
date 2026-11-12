@@ -1,0 +1,67 @@
+asyncapi: 3.0.0
+info:
+  title: Eventos del sistema bancario
+  version: 1.0.0
+  description: |
+    Eventos que los microservicios intercambian por Kafka. Las funcionalidades nuevas se comunican
+    solo por eventos: no invocan por REST las APIs de otros microservicios.
+    Cada mensaje es JSON; la clave del mensaje es el id de la entidad del evento.
+servers:
+  local:
+    host: localhost:9092
+    protocol: kafka
+    description: Kafka de docker-compose desde el host (los contenedores usan kafka:29092)
+channels:
+  customerEvents:
+    address: customer-events
+    description: Eventos de clientes. Dueño y productor, customer-service (3 particiones).
+    messages:
+      customerCreated:
+        $ref: '#/components/messages/CustomerCreated'
+operations:
+  publishCustomerCreated:
+    action: send
+    channel:
+      $ref: '#/channels/customerEvents'
+    summary: customer-service publica un CustomerCreated después de guardar cada cliente.
+    messages:
+      - $ref: '#/channels/customerEvents/messages/customerCreated'
+  consumeCustomerCreated:
+    action: receive
+    channel:
+      $ref: '#/channels/customerEvents'
+    summary: |
+      auth-service (grupo auth-service, desde el inicio del tópico) guarda su copia del cliente
+      para validar el registro de usuarios. Procesar dos veces el mismo evento no duplica nada.
+    messages:
+      - $ref: '#/channels/customerEvents/messages/customerCreated'
+components:
+  messages:
+    CustomerCreated:
+      name: CustomerCreated
+      contentType: application/json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id del cliente
+      payload:
+        type: object
+        required: [eventType, customerId, type, profile, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: CustomerCreated
+          customerId:
+            type: string
+            example: 6650f1c2a4b5c6d7e8f90123
+          type:
+            type: string
+            enum: [PERSONAL, BUSINESS]
+          profile:
+            type: string
+            enum: [STANDARD, VIP, PYME]
+          occurredAt:
+            type: string
+            format: date-time
+            example: '2026-11-15T10:00:00Z'
