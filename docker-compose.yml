@@ -1,5 +1,6 @@
-# Levanta la solución completa: discovery-server (Eureka), config-server, api-gateway, los cinco
+# Levanta la solución completa: discovery-server (Eureka), config-server, api-gateway, los seis
 # microservicios (cada uno con su propia instancia de MongoDB), Kafka y Redis.
+# Para las pruebas de punta a punta: docker compose -f docker-compose.yml -f docker-compose.e2e.yml up
 # Uso: docker compose up --build
 # Los puertos publicados en el host se pueden cambiar con las variables *_PORT.
 name: bank
@@ -49,6 +50,13 @@ services:
     volumes:
       - auth-data:/data/db
 
+  debt-db:
+    <<: *mongo
+    ports:
+      - "${DEBT_DB_PORT:-27022}:27017"
+    volumes:
+      - debt-data:/data/db
+
   # Message broker de los eventos entre microservicios, en modo KRaft (sin ZooKeeper).
   # Los contenedores usan kafka:29092; desde el host, localhost:9092.
   kafka:
@@ -66,6 +74,9 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # Si un consumidor se suscribe antes de que el dueño cree el tópico, Kafka lo crea con 3
+      # particiones, igual que el dueño; con 1 partición el consumidor no vería las demás.
+      KAFKA_NUM_PARTITIONS: 3
       KAFKA_LOG_DIRS: /var/lib/kafka/data
     ports:
       - "${KAFKA_PORT:-9092}:9092"
@@ -159,6 +170,8 @@ services:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_URL: http://discovery-server:8761/eureka/
       MONGODB_URI: mongodb://account-db:27017/account_db
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      REDIS_HOST: redis
     ports:
       - "${ACCOUNT_SERVICE_PORT:-8082}:8082"
     depends_on:
@@ -168,6 +181,10 @@ services:
         condition: service_healthy
       account-db:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   credit-service:
     build: ./credit-service
@@ -175,6 +192,8 @@ services:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_URL: http://discovery-server:8761/eureka/
       MONGODB_URI: mongodb://credit-db:27017/credit_db
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      REDIS_HOST: redis
     ports:
       - "${CREDIT_SERVICE_PORT:-8083}:8083"
     depends_on:
@@ -184,6 +203,10 @@ services:
         condition: service_healthy
       credit-db:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   transaction-service:
     build: ./transaction-service
@@ -191,6 +214,7 @@ services:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_URL: http://discovery-server:8761/eureka/
       MONGODB_URI: mongodb://transaction-db:27017/transaction_db
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     ports:
       - "${TRANSACTION_SERVICE_PORT:-8084}:8084"
     depends_on:
@@ -199,6 +223,8 @@ services:
       config-server:
         condition: service_healthy
       transaction-db:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
 
   auth-service:
@@ -223,10 +249,28 @@ services:
       kafka:
         condition: service_healthy
 
+  # Sin API: solo consume y publica eventos; no se registra en Eureka.
+  debt-service:
+    build: ./debt-service
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      MONGODB_URI: mongodb://debt-db:27017/debt_db
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    ports:
+      - "${DEBT_SERVICE_PORT:-8086}:8086"
+    depends_on:
+      config-server:
+        condition: service_healthy
+      debt-db:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
 volumes:
   customer-data:
   account-data:
   credit-data:
   transaction-data:
   auth-data:
+  debt-data:
   kafka-data:

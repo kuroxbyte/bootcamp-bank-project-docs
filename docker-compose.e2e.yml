@@ -1,0 +1,8 @@
+# Ajustes para las pruebas de punta a punta (Postman/Newman). Se usa junto con docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.e2e.yml up --build
+services:
+  debt-service:
+    environment:
+      # debt-service evalúa las deudas como si fuera pasado mañana: un crédito que vence mañana
+      # queda vencido de inmediato, sin esperar a que pase la fecha.
+      DEBT_EVALUATION_DAYS_AHEAD: 2

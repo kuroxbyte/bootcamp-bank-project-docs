@@ -1636,11 +1636,22 @@
           "name": "Otorgar crédito personal",
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Los créditos de la colección vencen dentro de un año: no generan deuda vencida.",
+                  "pm.collectionVariables.set('farDueDate', new Date(Date.now() + 365 * 86400000).toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('monto y vencimiento', () => { const c = pm.response.json(); pm.expect(c.amount).to.eql(5000); pm.expect(c.dueDate).to.eql(pm.collectionVariables.get('farDueDate')); });",
                   "if (pm.response.code === 201) { pm.collectionVariables.set('personalCreditId', pm.response.json().id); }"
                 ]
               }
@@ -1671,7 +1682,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"type\": \"PERSONAL\"}",
+              "raw": "{\"type\": \"PERSONAL\", \"amount\": 5000, \"dueDate\": \"{{farDueDate}}\"}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1719,7 +1730,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"type\": \"PERSONAL\"}",
+              "raw": "{\"type\": \"PERSONAL\", \"amount\": 5000, \"dueDate\": \"{{farDueDate}}\"}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1767,7 +1778,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"type\": \"BUSINESS\"}",
+              "raw": "{\"type\": \"BUSINESS\", \"amount\": 5000, \"dueDate\": \"{{farDueDate}}\"}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1815,7 +1826,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"type\": \"PERSONAL\"}",
+              "raw": "{\"type\": \"PERSONAL\", \"amount\": 5000, \"dueDate\": \"{{farDueDate}}\"}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1833,6 +1844,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('día de pago 15', () => pm.expect(pm.response.json().paymentDueDay).to.eql(15));",
                   "if (pm.response.code === 201) { pm.collectionVariables.set('creditCardId', pm.response.json().id); }"
                 ]
               }
@@ -1863,7 +1875,112 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"creditLimit\": 1000}",
+              "raw": "{\"creditLimit\": 1000, \"paymentDueDay\": 15}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Tarjeta con día de pago 29 (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{creditUrl}}/api/v1/credit-cards",
+              "host": [
+                "{{creditUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"creditLimit\": 1000, \"paymentDueDay\": 29}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crédito que vence hoy (422)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('todayUtc', new Date().toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{creditUrl}}/api/v1/credits",
+              "host": [
+                "{{creditUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"type\": \"BUSINESS\", \"amount\": 100, \"dueDate\": \"{{todayUtc}}\"}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1911,7 +2028,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"creditLimit\": 0}",
+              "raw": "{\"creditLimit\": 0, \"paymentDueDay\": 15}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3114,7 +3231,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"creditLimit\": 2000}",
+              "raw": "{\"creditLimit\": 2000, \"paymentDueDay\": 15}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -3161,7 +3278,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\"creditLimit\": 3000}",
+              "raw": "{\"creditLimit\": 3000, \"paymentDueDay\": 15}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -5213,7 +5330,545 @@
       ]
     },
     {
-      "name": "12. Seguridad (API Gateway)",
+      "name": "12. Deuda vencida (debt-service)",
+      "description": "Un cliente con deuda vencida en un producto de crédito no puede adquirir otro producto. Requiere docker-compose.e2e.yml: debt-service evalúa como si fuera pasado mañana, así el crédito que vence mañana queda vencido de inmediato.",
+      "item": [
+        {
+          "name": "Crear cliente moroso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('debtorCustomerId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{customerUrl}}/api/v1/customers",
+              "host": [
+                "{{customerUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Pedro Moroso\", \"type\": \"PERSONAL\", \"profile\": \"STANDARD\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar usuario del cliente moroso",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// auth-service conoce al cliente por el evento CustomerCreated de Kafka: se da un margen.",
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('usuario del cliente', () => pm.expect(pm.response.json().customerId).to.eql(pm.collectionVariables.get('debtorCustomerId')));",
+                  "pm.test('no devuelve la contraseña', () => pm.expect(pm.response.json()).to.not.have.any.keys('password', 'passwordHash'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/register",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"customerId\": \"{{debtorCustomerId}}\", \"username\": \"pedro.{{runId}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Iniciar sesión como cliente moroso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('token Bearer de 1 hora', () => { const t = pm.response.json(); pm.expect(t.tokenType).to.eql('Bearer'); pm.expect(t.expiresIn).to.eql(3600); });",
+                  "pm.test('el sub del token es el cliente', () => pm.expect(JSON.parse(atob(pm.response.json().accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).sub).to.eql(pm.collectionVariables.get('debtorCustomerId')));",
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('debtorToken', pm.response.json().accessToken); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/login",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"pedro.{{runId}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Otorgar crédito de 1000 que vence mañana",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('tomorrowUtc', new Date(Date.now() + 86400000).toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('debtorCreditId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{debtorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{creditUrl}}/api/v1/credits",
+              "host": [
+                "{{creditUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credits"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"type\": \"PERSONAL\", \"amount\": 1000, \"dueDate\": \"{{tomorrowUtc}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Abrir cuenta con deuda vencida (422)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// El estado de deuda llega por eventos: credit-service o transaction-service -> debt-service",
+                  "// -> account-service y credit-service. Se da un margen.",
+                  "setTimeout(() => {}, 4000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));",
+                  "pm.test('rechazo por deuda vencida', () => pm.expect(pm.response.json().detail).to.eql('El cliente tiene una deuda vencida en un producto de crédito'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{debtorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/savings",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "savings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"maxMonthlyMovements\": 5, \"openingAmount\": 0}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Pedir tarjeta con deuda vencida (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));",
+                  "pm.test('rechazo por deuda vencida', () => pm.expect(pm.response.json().detail).to.eql('El cliente tiene una deuda vencida en un producto de crédito'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{debtorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{creditUrl}}/api/v1/credit-cards",
+              "host": [
+                "{{creditUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credit-cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"creditLimit\": 500, \"paymentDueDay\": 15}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Pagar 400 del crédito",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{debtorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credits/{{debtorCreditId}}/payments",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credits",
+                "{{debtorCreditId}}",
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 400}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Con pago parcial sigue sin poder abrir cuenta (422)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// El estado de deuda llega por eventos: credit-service o transaction-service -> debt-service",
+                  "// -> account-service y credit-service. Se da un margen.",
+                  "setTimeout(() => {}, 4000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));",
+                  "pm.test('rechazo por deuda vencida', () => pm.expect(pm.response.json().detail).to.eql('El cliente tiene una deuda vencida en un producto de crédito'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{debtorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/savings",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "savings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"maxMonthlyMovements\": 5, \"openingAmount\": 0}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Pagar el saldo del crédito (600)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{debtorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/credits/{{debtorCreditId}}/payments",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "credits",
+                "{{debtorCreditId}}",
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 600}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sin deuda vencida abre la cuenta",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// El estado de deuda llega por eventos: credit-service o transaction-service -> debt-service",
+                  "// -> account-service y credit-service. Se da un margen.",
+                  "setTimeout(() => {}, 4000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{debtorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/savings",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "savings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"maxMonthlyMovements\": 5, \"openingAmount\": 0}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "13. Seguridad (API Gateway)",
       "description": "El gateway exige un token válido y toma el id del cliente del token, no del header X-Customer-Id.",
       "item": [
         {
@@ -5358,6 +6013,30 @@
     },
     {
       "key": "pymeToken",
+      "value": ""
+    },
+    {
+      "key": "debtorCustomerId",
+      "value": ""
+    },
+    {
+      "key": "debtorToken",
+      "value": ""
+    },
+    {
+      "key": "debtorCreditId",
+      "value": ""
+    },
+    {
+      "key": "farDueDate",
+      "value": ""
+    },
+    {
+      "key": "tomorrowUtc",
+      "value": ""
+    },
+    {
+      "key": "todayUtc",
       "value": ""
     },
     {

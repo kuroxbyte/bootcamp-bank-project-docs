@@ -13,6 +13,7 @@ Carpeta raíz de la solución. Cada microservicio y la configuración tienen su 
 | `credit-service` | Créditos y tarjetas de crédito | 8083 |
 | `transaction-service` | Depósitos, retiros, transferencias, pagos, consumos, saldos, movimientos y reportes | 8084 |
 | `auth-service` | Registro de usuarios e inicio de sesión con JWT | 8085 |
+| `debt-service` | Deuda vencida de cada cliente (solo eventos, sin API) | 8086 |
 
 ## Levantar la solución con Docker
 
@@ -29,6 +30,7 @@ Cada microservicio tiene su propia instancia de MongoDB con su propio volumen:
 | credit-service | `credit-db` | `credit_db` | 27019 |
 | transaction-service | `transaction-db` | `transaction_db` | 27020 |
 | auth-service | `auth-db` | `auth_db` | 27021 |
+| debt-service | `debt-db` | `debt_db` | 27022 |
 
 Fuera de Docker, cada servicio usa por defecto su instancia en `localhost` con ese puerto
 (se cambia con `MONGODB_URI`).
@@ -37,9 +39,17 @@ Además levanta Kafka (modo KRaft, puerto 9092; los contenedores usan `kafka:290
 (puerto 6379).
 
 Los puertos publicados en el host se pueden cambiar con `CUSTOMER_DB_PORT`, `ACCOUNT_DB_PORT`,
-`CREDIT_DB_PORT`, `TRANSACTION_DB_PORT`, `AUTH_DB_PORT`, `KAFKA_PORT`, `REDIS_PORT`,
+`CREDIT_DB_PORT`, `TRANSACTION_DB_PORT`, `AUTH_DB_PORT`, `DEBT_DB_PORT`, `KAFKA_PORT`, `REDIS_PORT`,
 `API_GATEWAY_PORT`, `DISCOVERY_SERVER_PORT`, `CONFIG_SERVER_PORT`, `CUSTOMER_SERVICE_PORT`,
-`ACCOUNT_SERVICE_PORT`, `CREDIT_SERVICE_PORT`, `TRANSACTION_SERVICE_PORT` y `AUTH_SERVICE_PORT`.
+`ACCOUNT_SERVICE_PORT`, `CREDIT_SERVICE_PORT`, `TRANSACTION_SERVICE_PORT`, `AUTH_SERVICE_PORT` y
+`DEBT_SERVICE_PORT`.
+
+Para las pruebas de punta a punta con Postman se agrega `docker-compose.e2e.yml`, que adelanta dos
+días la fecha con que debt-service evalúa las deudas (ver `postman/README.md`):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.e2e.yml up --build
+```
 
 El gateway y las llamadas entre servicios encuentran los servicios en Eureka (discovery-server):
 un servicio que arranca o se reinicia vuelve a estar disponible en unos 5 segundos. Para ejecutar
@@ -80,6 +90,24 @@ APIs de otros microservicios. Los datos maestros se leen con caché en Redis.
 - auth-service consume ese tópico y guarda su copia de clientes en MongoDB; la lee con caché en
   Redis (cache-aside, 10 minutos, configurable con `CACHE_CUSTOMERS_TTL`).
 - El contrato de los eventos está en `docs/events/asyncapi.yaml`.
+
+## Deuda vencida
+
+Un cliente con deuda vencida en algún producto de crédito no puede adquirir otro producto: abrir una
+cuenta, recibir un crédito o una tarjeta responde 422.
+
+- Crédito: al otorgarlo se indican `amount` y `dueDate` (posterior a hoy); desde el día siguiente
+  al vencimiento, el saldo pendiente (monto menos pagos) es deuda vencida.
+- Tarjeta: tiene un `paymentDueDay` (1 a 28); los consumos de un mes se pagan hasta ese día del
+  mes siguiente. Pasado ese día, lo que los pagos no cubren es deuda vencida.
+- credit-service publica `CreditGranted` y `CreditCardGranted` (`credit-events`); transaction-service
+  publica los pagos y consumos (`transaction-events`).
+- debt-service consume esos tópicos, calcula la deuda de cada cliente al llegar cada evento y en una
+  revisión diaria (00:05, `DEBT_EVALUATION_CRON`), y publica `CustomerDebtStatusChanged`
+  (`debt-events`) solo cuando el cliente pasa a tener deuda vencida o deja de tenerla.
+- account-service y credit-service guardan ese estado en su MongoDB con caché en Redis
+  (`debt-status:{customerId}`) y lo consultan al abrir productos, sin llamar a otro servicio. Después
+  de un pago, el bloqueo se levanta cuando llega el evento (normalmente en menos de un segundo).
 
 ## Documentación
 
