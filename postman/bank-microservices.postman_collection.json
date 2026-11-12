@@ -6292,7 +6292,908 @@
       ]
     },
     {
-      "name": "14. Seguridad (API Gateway)",
+      "name": "14. Tarjeta de débito (account-service y transaction-service)",
+      "description": "Tarjeta de débito asociada a cuentas del cliente (una cuenta, una tarjeta). Los pagos salen de la cuenta principal y se tratan como un retiro.",
+      "item": [
+        {
+          "name": "Crear cliente con tarjeta de débito",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('cardholderCustomerId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{customerUrl}}/api/v1/customers",
+              "host": [
+                "{{customerUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Carla Débito\", \"type\": \"PERSONAL\", \"profile\": \"STANDARD\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar usuario del cliente con tarjeta de débito",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// auth-service conoce al cliente por el evento CustomerCreated de Kafka: se da un margen.",
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('usuario del cliente', () => pm.expect(pm.response.json().customerId).to.eql(pm.collectionVariables.get('cardholderCustomerId')));",
+                  "pm.test('no devuelve la contraseña', () => pm.expect(pm.response.json()).to.not.have.any.keys('password', 'passwordHash'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/register",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"customerId\": \"{{cardholderCustomerId}}\", \"username\": \"carla.{{runId}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Iniciar sesión como cliente con tarjeta de débito",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('token Bearer de 1 hora', () => { const t = pm.response.json(); pm.expect(t.tokenType).to.eql('Bearer'); pm.expect(t.expiresIn).to.eql(3600); });",
+                  "pm.test('el sub del token es el cliente', () => pm.expect(JSON.parse(atob(pm.response.json().accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).sub).to.eql(pm.collectionVariables.get('cardholderCustomerId')));",
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('cardholderToken', pm.response.json().accessToken); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/login",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"carla.{{runId}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Abrir cuenta de ahorro (500)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('cardSavingsAccountId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cardholderToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/savings",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "savings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"maxMonthlyMovements\": 10, \"openingAmount\": 500}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Abrir cuenta corriente (300)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('cardCheckingAccountId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cardholderToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/checking",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "checking"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"maintenanceFee\": 10, \"openingAmount\": 300}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Emitir tarjeta de débito con la cuenta de ahorro como principal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('principal = ahorro', () => pm.expect(pm.response.json().primaryAccountId).to.eql(pm.collectionVariables.get('cardSavingsAccountId')));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('debitCardId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cardholderToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/debit-cards",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "debit-cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"primaryAccountId\": \"{{cardSavingsAccountId}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Asociar la cuenta corriente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('dos cuentas, la principal primero', () => pm.expect(pm.response.json().accountIds).to.eql([pm.collectionVariables.get('cardSavingsAccountId'), pm.collectionVariables.get('cardCheckingAccountId')]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cardholderToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/debit-cards/{{debitCardId}}/accounts",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "debit-cards",
+                "{{debitCardId}}",
+                "accounts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"accountId\": \"{{cardCheckingAccountId}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Otra tarjeta con una cuenta ya asociada (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cardholderToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/debit-cards",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "debit-cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"primaryAccountId\": \"{{cardCheckingAccountId}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Tarjeta con la cuenta de otro cliente (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cardholderToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/debit-cards",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "debit-cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"primaryAccountId\": \"{{checkingAccountId}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Listar tarjetas del cliente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('una tarjeta', () => pm.expect(pm.response.json()).to.have.lengthOf(1));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cardholderToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/debit-cards",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "debit-cards"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Pagar 100 con la tarjeta (sale de la principal)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// transaction-service conoce la tarjeta por debit-card-events: se da un margen.",
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('pago con tarjeta desde el ahorro', () => { const m = pm.response.json(); pm.expect(m.type).to.eql('DEBIT_CARD_PAYMENT'); pm.expect(m.accountId).to.eql(pm.collectionVariables.get('cardSavingsAccountId')); pm.expect(m.debitCardId).to.eql(pm.collectionVariables.get('debitCardId')); pm.expect(m.commission).to.eql(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cardholderToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/debit-cards/{{debitCardId}}/payments",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "debit-cards",
+                "{{debitCardId}}",
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 100}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Saldo de la cuenta cardSavingsAccountId (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saldo 400', () => pm.expect(pm.response.json().balance).to.eql(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cardholderToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{cardSavingsAccountId}}/balance",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{cardSavingsAccountId}}",
+                "balance"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cambiar la principal a la cuenta corriente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('principal = corriente', () => pm.expect(pm.response.json().primaryAccountId).to.eql(pm.collectionVariables.get('cardCheckingAccountId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cardholderToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/debit-cards/{{debitCardId}}/primary-account",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "debit-cards",
+                "{{debitCardId}}",
+                "primary-account"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"accountId\": \"{{cardCheckingAccountId}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Pagar 50 con la tarjeta (sale de la nueva principal)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// transaction-service conoce la tarjeta por debit-card-events: se da un margen.",
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('pago desde la corriente', () => pm.expect(pm.response.json().accountId).to.eql(pm.collectionVariables.get('cardCheckingAccountId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cardholderToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/debit-cards/{{debitCardId}}/payments",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "debit-cards",
+                "{{debitCardId}}",
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 50}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Saldo de la cuenta cardCheckingAccountId (250)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saldo 250', () => pm.expect(pm.response.json().balance).to.eql(250));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cardholderToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{cardCheckingAccountId}}/balance",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{cardCheckingAccountId}}",
+                "balance"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Pago mayor al saldo de la principal (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cardholderToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/debit-cards/{{debitCardId}}/payments",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "debit-cards",
+                "{{debitCardId}}",
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 1000}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Pagar con la tarjeta de otro cliente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/debit-cards/{{debitCardId}}/payments",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "debit-cards",
+                "{{debitCardId}}",
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"amount\": 10}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Últimos movimientos de la tarjeta de débito",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('los dos pagos con la tarjeta', () => { const m = pm.response.json(); pm.expect(m).to.have.lengthOf(2); m.forEach(x => pm.expect(x.type).to.eql('DEBIT_CARD_PAYMENT')); pm.expect(m.map(x => x.amount)).to.have.members([100, 50]); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cardholderToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/reports/debit-cards/{{debitCardId}}/last-movements",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reports",
+                "debit-cards",
+                "{{debitCardId}}",
+                "last-movements"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Últimos movimientos de la tarjeta de otro cliente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/reports/debit-cards/{{debitCardId}}/last-movements",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "reports",
+                "debit-cards",
+                "{{debitCardId}}",
+                "last-movements"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "15. Seguridad (API Gateway)",
       "description": "El gateway exige un token válido y toma el id del cliente del token, no del header X-Customer-Id.",
       "item": [
         {
@@ -6453,6 +7354,26 @@
     },
     {
       "key": "availableBefore",
+      "value": ""
+    },
+    {
+      "key": "cardholderCustomerId",
+      "value": ""
+    },
+    {
+      "key": "cardholderToken",
+      "value": ""
+    },
+    {
+      "key": "cardSavingsAccountId",
+      "value": ""
+    },
+    {
+      "key": "cardCheckingAccountId",
+      "value": ""
+    },
+    {
+      "key": "debitCardId",
       "value": ""
     },
     {

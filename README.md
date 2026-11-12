@@ -100,6 +100,19 @@ pagos propios siguen en `/payments`). El pago no se descuenta de ninguna cuenta,
 (`payerCustomerId`) y reduce la deuda del dueño del producto: el evento del pago lleva al dueño como
 cliente, así un tercero también puede saldar una deuda vencida.
 
+## Tarjetas de débito
+
+account-service emite tarjetas de débito asociadas a cuentas del cliente (`/api/v1/debit-cards`): una
+cuenta principal, de la que salen los pagos, y otras cuentas asociadas. Cada cuenta puede estar en
+una sola tarjeta y un cliente puede tener varias; no se emite a clientes con deuda vencida. Se puede
+asociar otra cuenta y cambiar la principal.
+
+account-service publica cada tarjeta en `debit-card-events`; transaction-service guarda su copia
+(MongoDB + Redis) y procesa los pagos con `POST /api/v1/debit-cards/{debitCardId}/payments`: el pago
+sale de la cuenta principal como movimiento `DEBIT_CARD_PAYMENT`, con las reglas y la comisión de un
+retiro. `GET /api/v1/reports/debit-cards/{debitCardId}/last-movements` devuelve los últimos 10 pagos
+con la tarjeta.
+
 ## Deuda vencida
 
 Un cliente con deuda vencida en algún producto de crédito no puede adquirir otro producto: abrir una

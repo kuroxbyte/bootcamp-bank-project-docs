@@ -36,6 +36,14 @@ channels:
         $ref: '#/components/messages/CreditCardPaymentRegistered'
       creditCardChargeRegistered:
         $ref: '#/components/messages/CreditCardChargeRegistered'
+  debitCardEvents:
+    address: debit-card-events
+    description: Tarjetas de débito emitidas o con cuentas cambiadas. Dueño y productor, account-service (3 particiones).
+    messages:
+      debitCardIssued:
+        $ref: '#/components/messages/DebitCardIssued'
+      debitCardAccountsUpdated:
+        $ref: '#/components/messages/DebitCardAccountsUpdated'
   debtEvents:
     address: debt-events
     description: Cambios en el estado de deuda de los clientes. Dueño y productor, debt-service (3 particiones).
@@ -79,6 +87,18 @@ operations:
     channel:
       $ref: '#/channels/transactionEvents'
     summary: debt-service registra los pagos y consumos; un eventId repetido no se cuenta dos veces.
+  publishDebitCardEvents:
+    action: send
+    channel:
+      $ref: '#/channels/debitCardEvents'
+    summary: account-service publica el estado completo de la tarjeta al emitirla, asociar una cuenta o cambiar la principal.
+  consumeDebitCardEvents:
+    action: receive
+    channel:
+      $ref: '#/channels/debitCardEvents'
+    summary: |
+      transaction-service (grupo transaction-service) guarda su copia de cada tarjeta (dueño y cuenta
+      principal) en MongoDB con caché en Redis, para procesar los pagos con tarjeta sin REST.
   publishDebtEvents:
     action: send
     channel:
@@ -324,6 +344,74 @@ components:
           overdueAmount:
             type: number
             description: Monto vencido total (0 si no tiene)
+          occurredAt:
+            type: string
+            format: date-time
+    DebitCardIssued:
+      name: DebitCardIssued
+      contentType: application/json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id del cliente
+      payload:
+        type: object
+        required: [eventType, eventId, debitCardId, customerId, primaryAccountId, accountIds, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: DebitCardIssued
+          eventId:
+            type: string
+            format: uuid
+            description: Id único del evento; permite descartar los repetidos
+          debitCardId:
+            type: string
+          customerId:
+            type: string
+          primaryAccountId:
+            type: string
+            description: Cuenta de la que salen los pagos con la tarjeta
+          accountIds:
+            type: array
+            description: Cuentas asociadas, empezando por la principal (cada cuenta, en una sola tarjeta)
+            items:
+              type: string
+          occurredAt:
+            type: string
+            format: date-time
+    DebitCardAccountsUpdated:
+      name: DebitCardAccountsUpdated
+      contentType: application/json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id del cliente
+      payload:
+        type: object
+        required: [eventType, eventId, debitCardId, customerId, primaryAccountId, accountIds, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: DebitCardAccountsUpdated
+          eventId:
+            type: string
+            format: uuid
+            description: Id único del evento; permite descartar los repetidos
+          debitCardId:
+            type: string
+          customerId:
+            type: string
+          primaryAccountId:
+            type: string
+            description: Cuenta de la que salen los pagos con la tarjeta
+          accountIds:
+            type: array
+            description: Cuentas asociadas, empezando por la principal (cada cuenta, en una sola tarjeta)
+            items:
+              type: string
           occurredAt:
             type: string
             format: date-time
