@@ -7,6 +7,7 @@
 /account-service/
 /credit-service/
 /transaction-service/
+/auth-service/
 
 ### IDE / SO ###
 .idea/

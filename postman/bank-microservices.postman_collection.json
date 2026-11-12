@@ -8,11 +8,21 @@
   "item": [
     {
       "name": "1. Clientes (customer-service)",
-      "description": "Crear y consultar clientes.",
+      "description": "Crear clientes (público: no requiere token).",
       "item": [
         {
           "name": "Crear cliente personal",
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Sufijo para que los nombres de usuario sean únicos en cada ejecución.",
+                  "pm.collectionVariables.set('runId', Date.now());"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
@@ -278,68 +288,6 @@
           }
         },
         {
-          "name": "Consultar cliente",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('devuelve el cliente', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('personalCustomerId')));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{customerUrl}}/api/v1/customers/{{personalCustomerId}}",
-              "host": [
-                "{{customerUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "customers",
-                "{{personalCustomerId}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Consultar cliente inexistente (404)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
-                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{customerUrl}}/api/v1/customers/000000000000000000000000",
-              "host": [
-                "{{customerUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "customers",
-                "000000000000000000000000"
-              ]
-            }
-          }
-        },
-        {
           "name": "Crear cliente sin nombre (400)",
           "event": [
             {
@@ -386,7 +334,692 @@
       ]
     },
     {
-      "name": "2. Cuentas bancarias (account-service)",
+      "name": "2. Autenticación (auth-service)",
+      "description": "Registro de usuarios e inicio de sesión (públicos). Cada cliente obtiene su token JWT; las demás peticiones lo envían en Authorization y el API Gateway toma de él el id del cliente.",
+      "item": [
+        {
+          "name": "Registrar usuario del cliente personal",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// auth-service conoce al cliente por el evento CustomerCreated de Kafka: se da un margen.",
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('usuario del cliente', () => pm.expect(pm.response.json().customerId).to.eql(pm.collectionVariables.get('personalCustomerId')));",
+                  "pm.test('no devuelve la contraseña', () => pm.expect(pm.response.json()).to.not.have.any.keys('password', 'passwordHash'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/register",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"customerId\": \"{{personalCustomerId}}\", \"username\": \"ana.{{runId}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar un nombre de usuario en uso (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/register",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"customerId\": \"{{vipCustomerId}}\", \"username\": \"ana.{{runId}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar un segundo usuario para el mismo cliente (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/register",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"customerId\": \"{{personalCustomerId}}\", \"username\": \"ana2.{{runId}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar un cliente inexistente (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/register",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"customerId\": \"000000000000000000000000\", \"username\": \"nadie.{{runId}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar con contraseña corta (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/register",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"customerId\": \"{{businessCustomerId}}\", \"username\": \"corta.{{runId}}\", \"password\": \"corta\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar usuario del cliente empresarial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('usuario del cliente', () => pm.expect(pm.response.json().customerId).to.eql(pm.collectionVariables.get('businessCustomerId')));",
+                  "pm.test('no devuelve la contraseña', () => pm.expect(pm.response.json()).to.not.have.any.keys('password', 'passwordHash'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/register",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"customerId\": \"{{businessCustomerId}}\", \"username\": \"andina.{{runId}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar usuario del cliente VIP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('usuario del cliente', () => pm.expect(pm.response.json().customerId).to.eql(pm.collectionVariables.get('vipCustomerId')));",
+                  "pm.test('no devuelve la contraseña', () => pm.expect(pm.response.json()).to.not.have.any.keys('password', 'passwordHash'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/register",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"customerId\": \"{{vipCustomerId}}\", \"username\": \"lucia.{{runId}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar usuario del cliente PYME",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('usuario del cliente', () => pm.expect(pm.response.json().customerId).to.eql(pm.collectionVariables.get('pymeCustomerId')));",
+                  "pm.test('no devuelve la contraseña', () => pm.expect(pm.response.json()).to.not.have.any.keys('password', 'passwordHash'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/register",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"customerId\": \"{{pymeCustomerId}}\", \"username\": \"rivera.{{runId}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Iniciar sesión con contraseña incorrecta (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 401', () => pm.response.to.have.status(401));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/login",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"ana.{{runId}}\", \"password\": \"Incorrecta1\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Iniciar sesión como cliente personal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('token Bearer de 1 hora', () => { const t = pm.response.json(); pm.expect(t.tokenType).to.eql('Bearer'); pm.expect(t.expiresIn).to.eql(3600); });",
+                  "pm.test('el sub del token es el cliente', () => pm.expect(JSON.parse(atob(pm.response.json().accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).sub).to.eql(pm.collectionVariables.get('personalCustomerId')));",
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('personalToken', pm.response.json().accessToken); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/login",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"ana.{{runId}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Iniciar sesión como cliente empresarial",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('token Bearer de 1 hora', () => { const t = pm.response.json(); pm.expect(t.tokenType).to.eql('Bearer'); pm.expect(t.expiresIn).to.eql(3600); });",
+                  "pm.test('el sub del token es el cliente', () => pm.expect(JSON.parse(atob(pm.response.json().accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).sub).to.eql(pm.collectionVariables.get('businessCustomerId')));",
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('businessToken', pm.response.json().accessToken); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/login",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"andina.{{runId}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Iniciar sesión como cliente VIP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('token Bearer de 1 hora', () => { const t = pm.response.json(); pm.expect(t.tokenType).to.eql('Bearer'); pm.expect(t.expiresIn).to.eql(3600); });",
+                  "pm.test('el sub del token es el cliente', () => pm.expect(JSON.parse(atob(pm.response.json().accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).sub).to.eql(pm.collectionVariables.get('vipCustomerId')));",
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('vipToken', pm.response.json().accessToken); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/login",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"lucia.{{runId}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Iniciar sesión como cliente PYME",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('token Bearer de 1 hora', () => { const t = pm.response.json(); pm.expect(t.tokenType).to.eql('Bearer'); pm.expect(t.expiresIn).to.eql(3600); });",
+                  "pm.test('el sub del token es el cliente', () => pm.expect(JSON.parse(atob(pm.response.json().accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).sub).to.eql(pm.collectionVariables.get('pymeCustomerId')));",
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('pymeToken', pm.response.json().accessToken); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/login",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"rivera.{{runId}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Consultar cliente (con token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('devuelve el cliente', () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('personalCustomerId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{customerUrl}}/api/v1/customers/{{personalCustomerId}}",
+              "host": [
+                "{{customerUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "{{personalCustomerId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Consultar cliente inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{customerUrl}}/api/v1/customers/000000000000000000000000",
+              "host": [
+                "{{customerUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers",
+                "000000000000000000000000"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Cuentas bancarias (account-service)",
       "description": "Apertura y consulta de cuentas con las reglas por tipo de cliente.",
       "item": [
         {
@@ -413,8 +1046,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -462,8 +1095,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -511,8 +1144,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -562,8 +1195,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -611,8 +1244,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -670,8 +1303,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -719,8 +1352,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -768,8 +1401,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -817,8 +1450,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -866,8 +1499,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -894,55 +1527,6 @@
           }
         },
         {
-          "name": "Cuenta para cliente inexistente (404)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
-                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "X-Customer-Id",
-                "value": "{{unknownCustomerId}}"
-              }
-            ],
-            "url": {
-              "raw": "{{accountUrl}}/api/v1/accounts/savings",
-              "host": [
-                "{{accountUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "accounts",
-                "savings"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\"maxMonthlyMovements\": 2, \"openingAmount\": 0}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          }
-        },
-        {
           "name": "Listar cuentas del cliente personal",
           "event": [
             {
@@ -960,8 +1544,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -992,7 +1576,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
+              }
+            ],
             "url": {
               "raw": "{{accountUrl}}/api/v1/accounts/{{savingsAccountId}}",
               "host": [
@@ -1008,14 +1597,14 @@
           }
         },
         {
-          "name": "Listar cuentas sin X-Customer-Id (400)",
+          "name": "Listar cuentas sin token (401)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('responde 400', () => pm.response.to.have.status(400));",
+                  "pm.test('responde 401', () => pm.response.to.have.status(401));",
                   "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
                 ]
               }
@@ -1040,7 +1629,7 @@
       ]
     },
     {
-      "name": "3. Créditos y tarjetas (credit-service)",
+      "name": "4. Créditos y tarjetas (credit-service)",
       "description": "Otorgamiento y consulta de productos de crédito.",
       "item": [
         {
@@ -1065,8 +1654,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -1113,8 +1702,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -1161,8 +1750,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -1209,8 +1798,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -1257,8 +1846,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -1305,8 +1894,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -1347,7 +1936,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{creditUrl}}/api/v1/credits/{{businessCreditId}}",
               "host": [
@@ -1378,7 +1972,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{creditUrl}}/api/v1/credit-cards/{{creditCardId}}",
               "host": [
@@ -1409,7 +2008,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
+              }
+            ],
             "url": {
               "raw": "{{creditUrl}}/api/v1/credit-cards/000000000000000000000000",
               "host": [
@@ -1442,8 +2046,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -1477,8 +2081,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -1497,7 +2101,7 @@
       ]
     },
     {
-      "name": "4. Transacciones de cuentas (transaction-service)",
+      "name": "5. Transacciones de cuentas (transaction-service)",
       "description": "Depósitos, retiros, saldo y movimientos.",
       "item": [
         {
@@ -1522,8 +2126,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -1572,8 +2176,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -1621,8 +2225,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -1671,8 +2275,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -1717,8 +2321,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -1754,8 +2358,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -1791,8 +2395,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -1828,8 +2432,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -1868,8 +2472,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -1918,8 +2522,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -1968,8 +2572,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -1999,7 +2603,7 @@
       ]
     },
     {
-      "name": "5. Pagos de créditos (transaction-service)",
+      "name": "6. Pagos de créditos (transaction-service)",
       "description": "Pagos y movimientos de créditos.",
       "item": [
         {
@@ -2024,8 +2628,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -2074,8 +2678,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -2120,8 +2724,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -2142,7 +2746,7 @@
       ]
     },
     {
-      "name": "6. Tarjetas de crédito (transaction-service)",
+      "name": "7. Tarjetas de crédito (transaction-service)",
       "description": "Consumos según el límite de crédito, pagos, crédito disponible y movimientos.",
       "item": [
         {
@@ -2166,8 +2770,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -2216,8 +2820,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -2266,8 +2870,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -2312,8 +2916,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -2349,8 +2953,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -2371,7 +2975,7 @@
       ]
     },
     {
-      "name": "7. Productos VIP y PYME",
+      "name": "8. Productos VIP y PYME",
       "description": "Ahorro VIP (mínimo de promedio diario) y corriente PYME (sin comisión); ambas exigen una tarjeta de crédito con el banco al abrirlas.",
       "item": [
         {
@@ -2396,8 +3000,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{vipCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{vipToken}}"
               }
             ],
             "url": {
@@ -2445,8 +3049,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{pymeCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{pymeToken}}"
               }
             ],
             "url": {
@@ -2493,8 +3097,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{vipCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{vipToken}}"
               }
             ],
             "url": {
@@ -2540,8 +3144,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{pymeCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{pymeToken}}"
               }
             ],
             "url": {
@@ -2590,8 +3194,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{vipCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{vipToken}}"
               }
             ],
             "url": {
@@ -2639,8 +3243,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{pymeCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{pymeToken}}"
               }
             ],
             "url": {
@@ -2689,8 +3293,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{pymeCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{pymeToken}}"
               }
             ],
             "url": {
@@ -2743,8 +3347,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{vipCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{vipToken}}"
               }
             ],
             "url": {
@@ -2786,8 +3390,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{vipCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{vipToken}}"
               }
             ],
             "url": {
@@ -2829,8 +3433,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{vipCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{vipToken}}"
               }
             ],
             "url": {
@@ -2857,7 +3461,7 @@
       ]
     },
     {
-      "name": "8. Comisión por transacción",
+      "name": "9. Comisión por transacción",
       "description": "Cuenta corriente PYME: 3 transacciones al mes sin comisión; desde la cuarta, 2.00 por transacción, descontada del saldo.",
       "item": [
         {
@@ -2882,8 +3486,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{pymeCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{pymeToken}}"
               }
             ],
             "url": {
@@ -2932,8 +3536,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{pymeCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{pymeToken}}"
               }
             ],
             "url": {
@@ -2982,8 +3586,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{pymeCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{pymeToken}}"
               }
             ],
             "url": {
@@ -3032,8 +3636,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{pymeCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{pymeToken}}"
               }
             ],
             "url": {
@@ -3078,8 +3682,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{pymeCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{pymeToken}}"
               }
             ],
             "url": {
@@ -3119,8 +3723,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{pymeCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{pymeToken}}"
               }
             ],
             "url": {
@@ -3169,8 +3773,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{pymeCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{pymeToken}}"
               }
             ],
             "url": {
@@ -3215,8 +3819,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{pymeCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{pymeToken}}"
               }
             ],
             "url": {
@@ -3252,8 +3856,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{pymeCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{pymeToken}}"
               }
             ],
             "url": {
@@ -3274,7 +3878,7 @@
       ]
     },
     {
-      "name": "9. Transferencias (transaction-service)",
+      "name": "10. Transferencias (transaction-service)",
       "description": "Entre cuentas propias y a terceros del mismo banco. Cuentan como retiro en el origen y depósito en el destino; cada cuenta paga su propia comisión.",
       "item": [
         {
@@ -3299,8 +3903,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -3348,8 +3952,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -3395,8 +3999,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -3432,8 +4036,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -3473,8 +4077,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -3524,8 +4128,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -3575,8 +4179,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -3622,8 +4226,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{pymeCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{pymeToken}}"
               }
             ],
             "url": {
@@ -3663,8 +4267,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -3714,8 +4318,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -3765,8 +4369,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -3816,8 +4420,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{pymeCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{pymeToken}}"
               }
             ],
             "url": {
@@ -3867,8 +4471,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -3914,8 +4518,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -3936,7 +4540,7 @@
       ]
     },
     {
-      "name": "10. Reportes (transaction-service)",
+      "name": "11. Reportes (transaction-service)",
       "description": "Reporte general del banco por tipo de producto en un intervalo y últimos 10 movimientos de una tarjeta de crédito. Los valores del reporte suman todo el banco: se verifican mínimos, por si la colección ya se ejecutó antes sobre la misma base.",
       "item": [
         {
@@ -3970,7 +4574,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
+              }
+            ],
             "url": {
               "raw": "{{transactionUrl}}/api/v1/reports/products?from={{reportFrom}}&to={{reportTo}}",
               "host": [
@@ -4011,7 +4620,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
+              }
+            ],
             "url": {
               "raw": "{{transactionUrl}}/api/v1/reports/products?from=2026-12-31&to=2026-01-01",
               "host": [
@@ -4052,7 +4666,12 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
+              }
+            ],
             "url": {
               "raw": "{{transactionUrl}}/api/v1/reports/products?from=2026-01-01",
               "host": [
@@ -4094,8 +4713,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -4143,8 +4762,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -4192,8 +4811,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -4241,8 +4860,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -4290,8 +4909,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -4339,8 +4958,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -4388,8 +5007,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -4437,8 +5056,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -4486,8 +5105,8 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -4533,8 +5152,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{businessCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{businessToken}}"
               }
             ],
             "url": {
@@ -4571,8 +5190,8 @@
             "method": "GET",
             "header": [
               {
-                "key": "X-Customer-Id",
-                "value": "{{personalCustomerId}}"
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
               }
             ],
             "url": {
@@ -4592,9 +5211,123 @@
           }
         }
       ]
+    },
+    {
+      "name": "12. Seguridad (API Gateway)",
+      "description": "El gateway exige un token válido y toma el id del cliente del token, no del header X-Customer-Id.",
+      "item": [
+        {
+          "name": "Petición sin token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 401', () => pm.response.to.have.status(401));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Petición con token inválido (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 401', () => pm.response.to.have.status(401));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer no-es-un-jwt"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "X-Customer-Id de otro cliente se ignora",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('solo cuentas del cliente del token', () => { const a = pm.response.json(); pm.expect(a).to.not.be.empty; a.forEach(x => pm.expect(x.customerId).to.eql(pm.collectionVariables.get('personalCustomerId'))); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
+              },
+              {
+                "key": "X-Customer-Id",
+                "value": "{{businessCustomerId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts"
+              ]
+            }
+          }
+        }
+      ]
     }
   ],
   "variable": [
+    {
+      "key": "runId",
+      "value": ""
+    },
     {
       "key": "personalCustomerId",
       "value": ""
@@ -4612,8 +5345,20 @@
       "value": ""
     },
     {
-      "key": "unknownCustomerId",
-      "value": "000000000000000000000000"
+      "key": "personalToken",
+      "value": ""
+    },
+    {
+      "key": "businessToken",
+      "value": ""
+    },
+    {
+      "key": "vipToken",
+      "value": ""
+    },
+    {
+      "key": "pymeToken",
+      "value": ""
     },
     {
       "key": "savingsAccountId",
