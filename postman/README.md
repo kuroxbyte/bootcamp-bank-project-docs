@@ -4,7 +4,7 @@ El sistema no tiene interfaz gráfica; las funcionalidades se verifican con esta
 
 | Archivo | Contenido |
 |---|---|
-| `bank-microservices.postman_collection.json` | 136 peticiones en 14 carpetas (clientes, autenticación, cuentas, créditos y tarjetas, transacciones de cuentas, pagos de créditos, tarjetas, productos VIP y PYME, comisión por transacción, transferencias, reportes, pagos de terceros, deuda vencida y seguridad), con pruebas automáticas de código de respuesta, reglas de negocio y formato de errores. |
+| `bank-microservices.postman_collection.json` | 155 peticiones en 15 carpetas (clientes, autenticación, cuentas, créditos y tarjetas, transacciones de cuentas, pagos de créditos, tarjetas, productos VIP y PYME, comisión por transacción, transferencias, reportes, pagos de terceros, deuda vencida, tarjeta de débito y seguridad), con pruebas automáticas de código de respuesta, reglas de negocio y formato de errores. |
 | `bank-gateway.postman_environment.json` | Todas las peticiones por el API Gateway en `localhost:8080`. |
 
 Todas las peticiones pasan por el API Gateway, que valida el token JWT. Después de crear los

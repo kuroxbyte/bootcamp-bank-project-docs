@@ -215,6 +215,7 @@ services:
       EUREKA_URL: http://discovery-server:8761/eureka/
       MONGODB_URI: mongodb://transaction-db:27017/transaction_db
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      REDIS_HOST: redis
     ports:
       - "${TRANSACTION_SERVICE_PORT:-8084}:8084"
     depends_on:
@@ -225,6 +226,8 @@ services:
       transaction-db:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   auth-service:
