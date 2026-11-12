@@ -18,6 +18,30 @@ channels:
     messages:
       customerCreated:
         $ref: '#/components/messages/CustomerCreated'
+  creditEvents:
+    address: credit-events
+    description: Productos de crédito otorgados. Dueño y productor, credit-service (3 particiones).
+    messages:
+      creditGranted:
+        $ref: '#/components/messages/CreditGranted'
+      creditCardGranted:
+        $ref: '#/components/messages/CreditCardGranted'
+  transactionEvents:
+    address: transaction-events
+    description: Pagos y consumos de productos de crédito. Dueño y productor, transaction-service (3 particiones).
+    messages:
+      creditPaymentRegistered:
+        $ref: '#/components/messages/CreditPaymentRegistered'
+      creditCardPaymentRegistered:
+        $ref: '#/components/messages/CreditCardPaymentRegistered'
+      creditCardChargeRegistered:
+        $ref: '#/components/messages/CreditCardChargeRegistered'
+  debtEvents:
+    address: debt-events
+    description: Cambios en el estado de deuda de los clientes. Dueño y productor, debt-service (3 particiones).
+    messages:
+      customerDebtStatusChanged:
+        $ref: '#/components/messages/CustomerDebtStatusChanged'
 operations:
   publishCustomerCreated:
     action: send
@@ -35,6 +59,40 @@ operations:
       para validar el registro de usuarios. Procesar dos veces el mismo evento no duplica nada.
     messages:
       - $ref: '#/channels/customerEvents/messages/customerCreated'
+  publishCreditEvents:
+    action: send
+    channel:
+      $ref: '#/channels/creditEvents'
+    summary: credit-service publica cada crédito o tarjeta después de otorgarlo.
+  consumeCreditEvents:
+    action: receive
+    channel:
+      $ref: '#/channels/creditEvents'
+    summary: debt-service (grupo debt-service) registra los productos de crédito de cada cliente.
+  publishTransactionEvents:
+    action: send
+    channel:
+      $ref: '#/channels/transactionEvents'
+    summary: transaction-service publica cada pago a un crédito o tarjeta y cada consumo después de guardarlo.
+  consumeTransactionEvents:
+    action: receive
+    channel:
+      $ref: '#/channels/transactionEvents'
+    summary: debt-service registra los pagos y consumos; un eventId repetido no se cuenta dos veces.
+  publishDebtEvents:
+    action: send
+    channel:
+      $ref: '#/channels/debtEvents'
+    summary: |
+      debt-service publica el estado de un cliente solo cuando pasa a tener deuda vencida o deja de
+      tenerla (al llegar un evento o en la revisión diaria).
+  consumeDebtEvents:
+    action: receive
+    channel:
+      $ref: '#/channels/debtEvents'
+    summary: |
+      account-service y credit-service (cada uno con su grupo) guardan el estado en su MongoDB con
+      caché en Redis y rechazan nuevos productos a clientes con deuda vencida.
 components:
   messages:
     CustomerCreated:
@@ -65,3 +123,199 @@ components:
             type: string
             format: date-time
             example: '2026-11-15T10:00:00Z'
+    CreditGranted:
+      name: CreditGranted
+      contentType: application/json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id del cliente
+      payload:
+        type: object
+        required: [eventType, eventId, creditId, customerId, creditType, amount, dueDate, grantedAt, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: CreditGranted
+          eventId:
+            type: string
+            format: uuid
+            description: Id único del evento; permite descartar los repetidos
+          creditId:
+            type: string
+          customerId:
+            type: string
+          creditType:
+            type: string
+            enum: [PERSONAL, BUSINESS]
+          amount:
+            type: number
+            example: 10000.00
+          dueDate:
+            type: string
+            format: date
+          grantedAt:
+            type: string
+            format: date
+          occurredAt:
+            type: string
+            format: date-time
+    CreditCardGranted:
+      name: CreditCardGranted
+      contentType: application/json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id del cliente
+      payload:
+        type: object
+        required: [eventType, eventId, creditCardId, customerId, creditLimit, paymentDueDay, grantedAt, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: CreditCardGranted
+          eventId:
+            type: string
+            format: uuid
+            description: Id único del evento; permite descartar los repetidos
+          creditCardId:
+            type: string
+          customerId:
+            type: string
+          creditLimit:
+            type: number
+          paymentDueDay:
+            type: integer
+            minimum: 1
+            maximum: 28
+          grantedAt:
+            type: string
+            format: date
+          occurredAt:
+            type: string
+            format: date-time
+    CreditPaymentRegistered:
+      name: CreditPaymentRegistered
+      contentType: application/json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id del cliente
+      payload:
+        type: object
+        required: [eventType, eventId, creditId, customerId, amount, date, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: CreditPaymentRegistered
+          eventId:
+            type: string
+            format: uuid
+            description: Id único del evento; permite descartar los repetidos
+          creditId:
+            type: string
+          customerId:
+            type: string
+          amount:
+            type: number
+          date:
+            type: string
+            format: date
+          occurredAt:
+            type: string
+            format: date-time
+    CreditCardPaymentRegistered:
+      name: CreditCardPaymentRegistered
+      contentType: application/json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id del cliente
+      payload:
+        type: object
+        required: [eventType, eventId, creditCardId, customerId, amount, date, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: CreditCardPaymentRegistered
+          eventId:
+            type: string
+            format: uuid
+            description: Id único del evento; permite descartar los repetidos
+          creditCardId:
+            type: string
+          customerId:
+            type: string
+          amount:
+            type: number
+          date:
+            type: string
+            format: date
+          occurredAt:
+            type: string
+            format: date-time
+    CreditCardChargeRegistered:
+      name: CreditCardChargeRegistered
+      contentType: application/json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id del cliente
+      payload:
+        type: object
+        required: [eventType, eventId, creditCardId, customerId, amount, date, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: CreditCardChargeRegistered
+          eventId:
+            type: string
+            format: uuid
+            description: Id único del evento; permite descartar los repetidos
+          creditCardId:
+            type: string
+          customerId:
+            type: string
+          amount:
+            type: number
+          date:
+            type: string
+            format: date
+          occurredAt:
+            type: string
+            format: date-time
+    CustomerDebtStatusChanged:
+      name: CustomerDebtStatusChanged
+      contentType: application/json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id del cliente
+      payload:
+        type: object
+        required: [eventType, eventId, customerId, hasOverdueDebt, overdueAmount, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: CustomerDebtStatusChanged
+          eventId:
+            type: string
+            format: uuid
+            description: Id único del evento; permite descartar los repetidos
+          customerId:
+            type: string
+          hasOverdueDebt:
+            type: boolean
+            description: true si tiene deuda vencida en algún producto de crédito
+          overdueAmount:
+            type: number
+            description: Monto vencido total (0 si no tiene)
+          occurredAt:
+            type: string
+            format: date-time

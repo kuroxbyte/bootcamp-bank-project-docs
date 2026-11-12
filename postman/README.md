@@ -4,7 +4,7 @@ El sistema no tiene interfaz gráfica; las funcionalidades se verifican con esta
 
 | Archivo | Contenido |
 |---|---|
-| `bank-microservices.postman_collection.json` | 115 peticiones en 12 carpetas (clientes, autenticación, cuentas, créditos y tarjetas, transacciones de cuentas, pagos de créditos, tarjetas, productos VIP y PYME, comisión por transacción, transferencias, reportes y seguridad), con pruebas automáticas de código de respuesta, reglas de negocio y formato de errores. |
+| `bank-microservices.postman_collection.json` | 127 peticiones en 13 carpetas (clientes, autenticación, cuentas, créditos y tarjetas, transacciones de cuentas, pagos de créditos, tarjetas, productos VIP y PYME, comisión por transacción, transferencias, reportes, deuda vencida y seguridad), con pruebas automáticas de código de respuesta, reglas de negocio y formato de errores. |
 | `bank-gateway.postman_environment.json` | Todas las peticiones por el API Gateway en `localhost:8080`. |
 
 Todas las peticiones pasan por el API Gateway, que valida el token JWT. Después de crear los
@@ -22,7 +22,15 @@ datos nuevos; los nombres de usuario llevan un sufijo distinto en cada ejecució
 
 En Postman: importar ambos archivos, elegir el entorno y usar **Run collection**.
 
-Desde la terminal, con la solución levantada con `docker compose up`:
+La carpeta de deuda vencida necesita que debt-service evalúe como si fuera pasado mañana: un crédito
+que vence mañana queda vencido de inmediato. Por eso la solución se levanta con
+`docker-compose.e2e.yml` (con solo `docker-compose.yml`, esa carpeta falla):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.e2e.yml up --build
+```
+
+Desde la terminal, con la solución levantada así:
 
 ```bash
 docker run --rm --network bank_default -v "$PWD/postman:/etc/newman" postman/newman:6-alpine \
