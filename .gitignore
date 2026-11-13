@@ -9,6 +9,7 @@
 /transaction-service/
 /auth-service/
 /debt-service/
+/yanki-service/
 
 ### IDE / SO ###
 .idea/

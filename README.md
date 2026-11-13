@@ -14,6 +14,7 @@ Carpeta raíz de la solución. Cada microservicio y la configuración tienen su 
 | `transaction-service` | Depósitos, retiros, transferencias, pagos, consumos, saldos, movimientos y reportes | 8084 |
 | `auth-service` | Registro de usuarios e inicio de sesión con JWT | 8085 |
 | `debt-service` | Deuda vencida de cada cliente (solo eventos, sin API) | 8086 |
+| `yanki-service` | Monedero móvil Yanki: pagos con el número de celular (solo eventos con los demás servicios) | 8087 |
 
 ## Levantar la solución con Docker
 
@@ -31,6 +32,7 @@ Cada microservicio tiene su propia instancia de MongoDB con su propio volumen:
 | transaction-service | `transaction-db` | `transaction_db` | 27020 |
 | auth-service | `auth-db` | `auth_db` | 27021 |
 | debt-service | `debt-db` | `debt_db` | 27022 |
+| yanki-service | `yanki-db` | `yanki_db` | 27023 |
 
 Fuera de Docker, cada servicio usa por defecto su instancia en `localhost` con ese puerto
 (se cambia con `MONGODB_URI`).
@@ -39,10 +41,11 @@ Además levanta Kafka (modo KRaft, puerto 9092; los contenedores usan `kafka:290
 (puerto 6379).
 
 Los puertos publicados en el host se pueden cambiar con `CUSTOMER_DB_PORT`, `ACCOUNT_DB_PORT`,
-`CREDIT_DB_PORT`, `TRANSACTION_DB_PORT`, `AUTH_DB_PORT`, `DEBT_DB_PORT`, `KAFKA_PORT`, `REDIS_PORT`,
+`CREDIT_DB_PORT`, `TRANSACTION_DB_PORT`, `AUTH_DB_PORT`, `DEBT_DB_PORT`, `YANKI_DB_PORT`, `KAFKA_PORT`,
+`REDIS_PORT`,
 `API_GATEWAY_PORT`, `DISCOVERY_SERVER_PORT`, `CONFIG_SERVER_PORT`, `CUSTOMER_SERVICE_PORT`,
-`ACCOUNT_SERVICE_PORT`, `CREDIT_SERVICE_PORT`, `TRANSACTION_SERVICE_PORT`, `AUTH_SERVICE_PORT` y
-`DEBT_SERVICE_PORT`.
+`ACCOUNT_SERVICE_PORT`, `CREDIT_SERVICE_PORT`, `TRANSACTION_SERVICE_PORT`, `AUTH_SERVICE_PORT`,
+`DEBT_SERVICE_PORT` y `YANKI_SERVICE_PORT`.
 
 Para las pruebas de punta a punta con Postman se agrega `docker-compose.e2e.yml`, que adelanta dos
 días la fecha con que debt-service evalúa las deudas (ver `postman/README.md`):
@@ -69,11 +72,15 @@ En Docker, config-server lee los archivos de `config-repo` montados en solo lect
    (público). auth-service conoce al cliente por el evento `CustomerCreated` de Kafka; si se acaba
    de crear, puede tardar unos segundos.
 3. Iniciar sesión: `POST /api/v1/auth/login` (público). Devuelve un JWT RS256 de 1 hora cuyo claim
-   `sub` es el id del cliente.
+   `sub` es el id del cliente y cuyo claim `roles` es `["CUSTOMER"]`.
 4. Las demás peticiones envían `Authorization: Bearer <token>`. El API Gateway valida firma,
    vencimiento y emisor con la clave pública de config-repo; sin token o con uno inválido responde
-   401. El gateway descarta cualquier `X-Customer-Id` que mande el cliente y envía a los servicios
-   el del token.
+   401, y con un rol que no permite la ruta, 403. El gateway descarta cualquier `X-Customer-Id` o
+   `X-Wallet-Id` que mande el cliente y envía a los servicios el del token.
+
+Los dueños de un monedero Yanki obtienen su token con `POST /api/v1/auth/wallet-users` (celular y
+contraseña) y `POST /api/v1/auth/wallet-login`: `sub` es el id del monedero y `roles` es
+`["WALLET"]`. Ese token solo sirve para `/api/v1/yanki/**`; el de cliente, para las demás rutas.
 
 El token se valida solo en el gateway: llamar directo a los puertos de los servicios se salta la
 validación. Las claves RSA de config-repo son solo de desarrollo; en otro entorno se reemplazan con
@@ -112,6 +119,29 @@ account-service publica cada tarjeta en `debit-card-events`; transaction-service
 sale de la cuenta principal como movimiento `DEBIT_CARD_PAYMENT`, con las reglas y la comisión de un
 retiro. `GET /api/v1/reports/debit-cards/{debitCardId}/last-movements` devuelve los últimos 10 pagos
 con la tarjeta.
+
+## Monedero Yanki
+
+yanki-service es un monedero móvil para cualquier persona, cliente o no del banco. Un monedero se
+crea con documento (DNI, CEX o pasaporte), celular, IMEI y correo (`POST /api/v1/yanki/wallets`,
+público); hay uno por celular. Los pagos se envían con solo el celular del destino
+(`POST /api/v1/yanki/payments`).
+
+- Sin tarjeta, el monedero tiene su propio saldo: un pago entre dos monederos sin tarjeta se completa
+  al instante (201).
+- Un cliente del banco autoriza su tarjeta de débito para un monedero
+  (`POST /api/v1/yanki/debit-card-links`, token de cliente) y el dueño del monedero la confirma
+  (`POST /api/v1/yanki/debit-card-links/{linkId}/confirm`). El saldo del monedero se transfiere a la
+  cuenta principal de la tarjeta y, desde entonces, los pagos se cargan y abonan en esa cuenta. Un
+  monedero tiene una sola tarjeta y una tarjeta está en un solo monedero.
+- Si interviene una cuenta, el pago queda pendiente (202) y se completa por eventos (saga):
+  yanki-service pide el cargo o el abono en `yanki-operations`; transaction-service lo registra
+  (`YANKI_PAYMENT_SENT` como un retiro, `YANKI_PAYMENT_RECEIVED` como un depósito) y responde en
+  `yanki-operation-results`. Si el destino rechaza el abono, el cargo se devuelve
+  (`YANKI_PAYMENT_REVERSAL`, sin reglas ni comisión) y el pago queda `REJECTED` con el motivo.
+- yanki-service no llama a la API REST de otros servicios: conoce las tarjetas por
+  `debit-card-events` (copia en MongoDB con caché en Redis) y publica `WalletCreated` en
+  `yanki-events` para que auth-service registre el acceso del monedero.
 
 ## Deuda vencida
 
