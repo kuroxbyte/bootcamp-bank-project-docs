@@ -4,14 +4,14 @@ El sistema no tiene interfaz gráfica; las funcionalidades se verifican con esta
 
 | Archivo | Contenido |
 |---|---|
-| `bank-microservices.postman_collection.json` | 155 peticiones en 15 carpetas (clientes, autenticación, cuentas, créditos y tarjetas, transacciones de cuentas, pagos de créditos, tarjetas, productos VIP y PYME, comisión por transacción, transferencias, reportes, pagos de terceros, deuda vencida, tarjeta de débito y seguridad), con pruebas automáticas de código de respuesta, reglas de negocio y formato de errores. |
+| `bank-microservices.postman_collection.json` | 208 peticiones en 16 carpetas (clientes, autenticación, cuentas, créditos y tarjetas, transacciones de cuentas, pagos de créditos, tarjetas, productos VIP y PYME, comisión por transacción, transferencias, reportes, pagos de terceros, deuda vencida, tarjeta de débito, monedero Yanki y seguridad), con pruebas automáticas de código de respuesta, reglas de negocio y formato de errores. |
 | `bank-gateway.postman_environment.json` | Todas las peticiones por el API Gateway en `localhost:8080`. |
 
 Todas las peticiones pasan por el API Gateway, que valida el token JWT. Después de crear los
 clientes, la carpeta de autenticación registra un usuario por cliente (personal, empresarial, VIP y
 PYME), inicia sesión y guarda cada token. Las demás peticiones envían
 `Authorization: Bearer <token>` del cliente que opera; ya no envían `X-Customer-Id`: el gateway lo
-toma del claim `sub` del token. Llamar directo a los puertos de los servicios (8081 a 8085) se salta
+toma del claim `sub` del token. Llamar directo a los puertos de los servicios (8081 a 8087) se salta
 esa validación, por eso no hay entorno para hacerlo.
 
 Las carpetas se ejecutan en orden: cada paso guarda en variables de la colección los ids y tokens
@@ -37,11 +37,16 @@ docker run --rm --network bank_default -v "$PWD/postman:/etc/newman" postman/new
   run bank-microservices.postman_collection.json -e bank-gateway.postman_environment.json \
   --env-var authUrl=http://api-gateway:8080 --env-var customerUrl=http://api-gateway:8080 \
   --env-var accountUrl=http://api-gateway:8080 --env-var creditUrl=http://api-gateway:8080 \
-  --env-var transactionUrl=http://api-gateway:8080
+  --env-var transactionUrl=http://api-gateway:8080 --env-var yankiUrl=http://api-gateway:8080
 ```
 
 auth-service conoce a cada cliente por el evento `CustomerCreated` de Kafka; el primer registro
-espera unos segundos para darle tiempo a llegar.
+espera unos segundos para darle tiempo a llegar. Lo mismo con los monederos (`WalletCreated`).
+
+La carpeta del monedero Yanki crea tres monederos con celulares distintos en cada ejecución, inicia
+sesión con cada uno (token con rol `WALLET`) y asocia tarjetas de débito. Los pagos en los que
+interviene una cuenta se completan por eventos: la petición que consulta el resultado espera unos
+segundos antes de enviarse.
 
 La cuenta a plazo fijo se abre con el día actual en UTC (la zona horaria de los contenedores), para
 poder registrar su único movimiento del mes.

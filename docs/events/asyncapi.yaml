@@ -50,6 +50,30 @@ channels:
     messages:
       customerDebtStatusChanged:
         $ref: '#/components/messages/CustomerDebtStatusChanged'
+  yankiEvents:
+    address: yanki-events
+    description: Monederos Yanki creados. Dueño y productor, yanki-service (3 particiones).
+    messages:
+      walletCreated:
+        $ref: '#/components/messages/WalletCreated'
+  yankiOperations:
+    address: yanki-operations
+    description: |
+      Cargos y abonos que yanki-service pide sobre la cuenta principal de la tarjeta de débito de
+      un monedero. Dueño y productor, yanki-service (3 particiones).
+    messages:
+      yankiAccountDebitRequested:
+        $ref: '#/components/messages/YankiAccountDebitRequested'
+      yankiAccountCreditRequested:
+        $ref: '#/components/messages/YankiAccountCreditRequested'
+  yankiOperationResults:
+    address: yanki-operation-results
+    description: Respuesta a cada cargo o abono pedido por yanki-service. Dueño y productor, transaction-service (3 particiones).
+    messages:
+      yankiOperationCompleted:
+        $ref: '#/components/messages/YankiOperationCompleted'
+      yankiOperationRejected:
+        $ref: '#/components/messages/YankiOperationRejected'
 operations:
   publishCustomerCreated:
     action: send
@@ -113,6 +137,54 @@ operations:
     summary: |
       account-service y credit-service (cada uno con su grupo) guardan el estado en su MongoDB con
       caché en Redis y rechazan nuevos productos a clientes con deuda vencida.
+  publishWalletCreated:
+    action: send
+    channel:
+      $ref: '#/channels/yankiEvents'
+    summary: yanki-service publica un WalletCreated después de guardar cada monedero.
+  consumeWalletCreated:
+    action: receive
+    channel:
+      $ref: '#/channels/yankiEvents'
+    summary: |
+      auth-service (grupo auth-service, desde el inicio del tópico) guarda su copia del monedero
+      (id y celular) en MongoDB con caché en Redis, para validar el registro del acceso al monedero.
+  publishYankiOperations:
+    action: send
+    channel:
+      $ref: '#/channels/yankiOperations'
+    summary: |
+      yanki-service pide un cargo (pago desde una cuenta) o un abono (pago hacia una cuenta,
+      devolución de un cargo, o saldo del monedero al asociar la tarjeta). Si no puede publicar,
+      deshace lo hecho y responde 503.
+  consumeYankiOperations:
+    action: receive
+    channel:
+      $ref: '#/channels/yankiOperations'
+    summary: |
+      transaction-service (grupo transaction-service) registra el movimiento YANKI_PAYMENT_SENT,
+      YANKI_PAYMENT_RECEIVED o YANKI_PAYMENT_REVERSAL con las reglas de la cuenta y guarda el
+      resultado por operationId: un pedido repetido recibe la misma respuesta sin otro movimiento.
+  publishYankiOperationResults:
+    action: send
+    channel:
+      $ref: '#/channels/yankiOperationResults'
+    summary: transaction-service responde cada operación Yanki, completada o rechazada con su motivo.
+  consumeYankiOperationResults:
+    action: receive
+    channel:
+      $ref: '#/channels/yankiOperationResults'
+    summary: |
+      yanki-service (grupo yanki-service) avanza el pago o la asociación de tarjeta: acredita el
+      destino, pide devolver el cargo o devuelve el saldo al monedero. Una respuesta que no
+      corresponde al paso actual (repetida) se ignora.
+  consumeDebitCardEventsInYanki:
+    action: receive
+    channel:
+      $ref: '#/channels/debitCardEvents'
+    summary: |
+      yanki-service (grupo yanki-service) guarda su copia de cada tarjeta (dueño y cuenta principal)
+      en MongoDB con caché en Redis, para asociarla a un monedero y cargar o abonar su cuenta.
 components:
   messages:
     CustomerCreated:
@@ -412,6 +484,167 @@ components:
             description: Cuentas asociadas, empezando por la principal (cada cuenta, en una sola tarjeta)
             items:
               type: string
+          occurredAt:
+            type: string
+            format: date-time
+    WalletCreated:
+      name: WalletCreated
+      contentType: application/json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id del monedero
+      payload:
+        type: object
+        required: [eventType, eventId, walletId, phone, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: WalletCreated
+          eventId:
+            type: string
+            format: uuid
+            description: Id único del evento; permite descartar los repetidos
+          walletId:
+            type: string
+          phone:
+            type: string
+            description: Celular del monedero (9 dígitos); con él inicia sesión su dueño
+            example: '987654321'
+          occurredAt:
+            type: string
+            format: date-time
+    YankiAccountDebitRequested:
+      name: YankiAccountDebitRequested
+      contentType: application/json
+      description: 'Cargo a la cuenta: se registra como YANKI_PAYMENT_SENT con las reglas y la comisión de un retiro.'
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id de la cuenta (las operaciones de una cuenta se procesan en orden)
+      payload:
+        type: object
+        required: [eventType, eventId, operationId, accountId, amount, date, reversal, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: YankiAccountDebitRequested
+          eventId:
+            type: string
+            format: uuid
+            description: Id único del evento; permite descartar los repetidos
+          operationId:
+            type: string
+            description: Id de la operación en yanki-service (payment:{id}:debit|credit|refund o link:{id}:transfer)
+            example: payment:6650f1c2a4b5c6d7e8f90123:debit
+          accountId:
+            type: string
+            description: Cuenta principal de la tarjeta de débito del monedero
+          amount:
+            type: number
+          date:
+            type: string
+            format: date
+          reversal:
+            type: boolean
+            description: Solo en abonos; true si devuelve un cargo anterior (sin reglas ni comisión)
+          occurredAt:
+            type: string
+            format: date-time
+    YankiAccountCreditRequested:
+      name: YankiAccountCreditRequested
+      contentType: application/json
+      description: 'Abono a la cuenta: YANKI_PAYMENT_RECEIVED (reglas y comisión de un depósito) o YANKI_PAYMENT_REVERSAL si reversal es true.'
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id de la cuenta (las operaciones de una cuenta se procesan en orden)
+      payload:
+        type: object
+        required: [eventType, eventId, operationId, accountId, amount, date, reversal, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: YankiAccountCreditRequested
+          eventId:
+            type: string
+            format: uuid
+            description: Id único del evento; permite descartar los repetidos
+          operationId:
+            type: string
+            description: Id de la operación en yanki-service (payment:{id}:debit|credit|refund o link:{id}:transfer)
+            example: payment:6650f1c2a4b5c6d7e8f90123:debit
+          accountId:
+            type: string
+            description: Cuenta principal de la tarjeta de débito del monedero
+          amount:
+            type: number
+          date:
+            type: string
+            format: date
+          reversal:
+            type: boolean
+            description: Solo en abonos; true si devuelve un cargo anterior (sin reglas ni comisión)
+          occurredAt:
+            type: string
+            format: date-time
+    YankiOperationCompleted:
+      name: YankiOperationCompleted
+      contentType: application/json
+      description: Se registró el movimiento.
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id de la operación
+      payload:
+        type: object
+        required: [eventType, eventId, operationId, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: YankiOperationCompleted
+          eventId:
+            type: string
+            format: uuid
+            description: Id único del evento; permite descartar los repetidos
+          operationId:
+            type: string
+            description: Id de la operación en yanki-service (payment:{id}:debit|credit|refund o link:{id}:transfer)
+            example: payment:6650f1c2a4b5c6d7e8f90123:debit
+          occurredAt:
+            type: string
+            format: date-time
+    YankiOperationRejected:
+      name: YankiOperationRejected
+      contentType: application/json
+      description: No se registró el movimiento.
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id de la operación
+      payload:
+        type: object
+        required: [eventType, eventId, operationId, reason, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: YankiOperationRejected
+          eventId:
+            type: string
+            format: uuid
+            description: Id único del evento; permite descartar los repetidos
+          operationId:
+            type: string
+            description: Id de la operación en yanki-service (payment:{id}:debit|credit|refund o link:{id}:transfer)
+            example: payment:6650f1c2a4b5c6d7e8f90123:debit
+          reason:
+            type: string
+            description: Motivo del rechazo (cuenta inexistente, saldo insuficiente, límite de movimientos...)
           occurredAt:
             type: string
             format: date-time

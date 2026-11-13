@@ -7193,7 +7193,2360 @@
       ]
     },
     {
-      "name": "15. Seguridad (API Gateway)",
+      "name": "15. Monedero Yanki (yanki-service)",
+      "description": "Monedero móvil: no hace falta ser cliente. Pagos con solo el celular: entre monederos se completan al instante (201); si interviene la cuenta de una tarjeta de débito, quedan pendientes (202) hasta que transaction-service responde. Al asociar una tarjeta, el saldo del monedero pasa a la cuenta principal.",
+      "item": [
+        {
+          "name": "Crear monedero A",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Celulares únicos en cada ejecución (un monedero por celular).",
+                  "const base = String(Date.now()).slice(-7);",
+                  "pm.collectionVariables.set('phoneA', '90' + base);",
+                  "pm.collectionVariables.set('phoneB', '91' + base);",
+                  "pm.collectionVariables.set('phoneC', '92' + base);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('activo, sin tarjeta y con saldo 0', () => { const w = pm.response.json(); pm.expect(w.status).to.eql('ACTIVE'); pm.expect(w.balance).to.eql(0); pm.expect(w.debitCardId).to.not.exist; });",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('walletAId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/wallets",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "wallets"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"documentType\": \"DNI\", \"documentNumber\": \"45678910\", \"phone\": \"{{phoneA}}\", \"imei\": \"490154203237518\", \"email\": \"a@yanki.pe\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear monedero B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('activo, sin tarjeta y con saldo 0', () => { const w = pm.response.json(); pm.expect(w.status).to.eql('ACTIVE'); pm.expect(w.balance).to.eql(0); pm.expect(w.debitCardId).to.not.exist; });",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('walletBId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/wallets",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "wallets"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"documentType\": \"DNI\", \"documentNumber\": \"45678911\", \"phone\": \"{{phoneB}}\", \"imei\": \"490154203237518\", \"email\": \"b@yanki.pe\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear monedero C",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('activo, sin tarjeta y con saldo 0', () => { const w = pm.response.json(); pm.expect(w.status).to.eql('ACTIVE'); pm.expect(w.balance).to.eql(0); pm.expect(w.debitCardId).to.not.exist; });",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('walletCId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/wallets",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "wallets"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"documentType\": \"DNI\", \"documentNumber\": \"45678912\", \"phone\": \"{{phoneC}}\", \"imei\": \"490154203237518\", \"email\": \"c@yanki.pe\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear monedero con un celular que ya tiene uno (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/wallets",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "wallets"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"documentType\": \"CEX\", \"documentNumber\": \"X123\", \"phone\": \"{{phoneA}}\", \"imei\": \"490154203237518\", \"email\": \"x@yanki.pe\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear monedero con IMEI inválido (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/wallets",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "wallets"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"documentType\": \"PASSPORT\", \"documentNumber\": \"P1234567\", \"phone\": \"999999999\", \"imei\": \"490154203237519\", \"email\": \"x@yanki.pe\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Crear monedero con DNI mal formado (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/wallets",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "wallets"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"documentType\": \"DNI\", \"documentNumber\": \"123\", \"phone\": \"999999998\", \"imei\": \"490154203237518\", \"email\": \"x@yanki.pe\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar acceso del monedero A",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// auth-service conoce el monedero por el evento WalletCreated de Kafka: se da un margen.",
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('acceso del monedero', () => pm.expect(pm.response.json().walletId).to.eql(pm.collectionVariables.get('walletAId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/wallet-users",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "wallet-users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"phone\": \"{{phoneA}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar acceso del monedero B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('acceso del monedero', () => pm.expect(pm.response.json().walletId).to.eql(pm.collectionVariables.get('walletBId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/wallet-users",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "wallet-users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"phone\": \"{{phoneB}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar acceso del monedero C",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('acceso del monedero', () => pm.expect(pm.response.json().walletId).to.eql(pm.collectionVariables.get('walletCId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/wallet-users",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "wallet-users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"phone\": \"{{phoneC}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar otra vez el acceso del monedero A (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/wallet-users",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "wallet-users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"phone\": \"{{phoneA}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar acceso de un celular sin monedero (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/wallet-users",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "wallet-users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"phone\": \"999999997\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Iniciar sesión con el monedero A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('token de monedero', () => { const c = JSON.parse(atob(pm.response.json().accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); pm.expect(c.roles).to.eql(['WALLET']); pm.expect(c.sub).to.eql(pm.collectionVariables.get('walletAId')); });",
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('walletAToken', pm.response.json().accessToken); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/wallet-login",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "wallet-login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"phone\": \"{{phoneA}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Iniciar sesión con el monedero B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('token de monedero', () => { const c = JSON.parse(atob(pm.response.json().accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); pm.expect(c.roles).to.eql(['WALLET']); pm.expect(c.sub).to.eql(pm.collectionVariables.get('walletBId')); });",
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('walletBToken', pm.response.json().accessToken); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/wallet-login",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "wallet-login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"phone\": \"{{phoneB}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Iniciar sesión con el monedero C",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('token de monedero', () => { const c = JSON.parse(atob(pm.response.json().accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); pm.expect(c.roles).to.eql(['WALLET']); pm.expect(c.sub).to.eql(pm.collectionVariables.get('walletCId')); });",
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('walletCToken', pm.response.json().accessToken); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/wallet-login",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "wallet-login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"phone\": \"{{phoneC}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Iniciar sesión con contraseña incorrecta (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 401', () => pm.response.to.have.status(401));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/wallet-login",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "wallet-login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"phone\": \"{{phoneA}}\", \"password\": \"Incorrecta1\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Token de monedero en una ruta bancaria (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 403', () => pm.response.to.have.status(403));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletAToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Token de cliente en una ruta del monedero (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 403', () => pm.response.to.have.status(403));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/wallet",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "wallet"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Saldo del monedero A (0)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saldo 0', () => pm.expect(pm.response.json().balance).to.eql(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletAToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/wallet",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "wallet"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Pagar sin saldo (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));",
+                  "pm.test('saldo insuficiente', () => pm.expect(pm.response.json().detail).to.eql('Saldo insuficiente en el monedero'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletAToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/payments",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"toPhone\": \"{{phoneB}}\", \"amount\": 10}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Pagar a un celular sin monedero (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletAToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/payments",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"toPhone\": \"999999996\", \"amount\": 1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Pagarse a sí mismo (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletAToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/payments",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"toPhone\": \"{{phoneA}}\", \"amount\": 1}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "El cliente con tarjeta autoriza su tarjeta para el monedero C",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('pendiente de confirmación', () => pm.expect(pm.response.json().status).to.eql('PENDING_CONFIRMATION'));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('linkCId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cardholderToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/debit-card-links",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "debit-card-links"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"phone\": \"{{phoneC}}\", \"debitCardId\": \"{{debitCardId}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Autorizar la tarjeta de otro cliente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{personalToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/debit-card-links",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "debit-card-links"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"phone\": \"{{phoneB}}\", \"debitCardId\": \"{{debitCardId}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "El monedero C ve la asociación pendiente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('una asociación', () => pm.expect(pm.response.json().map(l => l.id)).to.eql([pm.collectionVariables.get('linkCId')]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletCToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/debit-card-links",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "debit-card-links"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Otro monedero no puede confirmarla (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletBToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/debit-card-links/{{linkCId}}/confirm",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "debit-card-links",
+                "{{linkCId}}",
+                "confirm"
+              ]
+            }
+          }
+        },
+        {
+          "name": "El monedero C confirma (saldo 0: asociada al instante)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('activa sin saldo transferido', () => { const l = pm.response.json(); pm.expect(l.status).to.eql('ACTIVE'); pm.expect(l.transferredBalance).to.eql(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletCToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/debit-card-links/{{linkCId}}/confirm",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "debit-card-links",
+                "{{linkCId}}",
+                "confirm"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Autorizar una tarjeta ya asociada (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cardholderToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/debit-card-links",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "debit-card-links"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"phone\": \"{{phoneA}}\", \"debitCardId\": \"{{debitCardId}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Saldo del monedero C (0)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saldo 0', () => pm.expect(pm.response.json().balance).to.eql(0));",
+                  "pm.test('con la tarjeta asociada', () => pm.expect(pm.response.json().debitCardId).to.eql(pm.collectionVariables.get('debitCardId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletCToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/wallet",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "wallet"
+              ]
+            }
+          }
+        },
+        {
+          "name": "C paga 100 a A desde la cuenta de su tarjeta (202)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 202', () => pm.response.to.have.status(202));",
+                  "if (pm.response.code === 202) { pm.collectionVariables.set('yankiPaymentId', pm.response.json().id); }",
+                  "pm.test('pendiente', () => pm.expect(pm.response.json().status).to.eql('PENDING'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletCToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/payments",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"toPhone\": \"{{phoneA}}\", \"amount\": 100}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "El pago de C a A se completa",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// El pago o la asociación terminan cuando transaction-service responde por Kafka: se da un margen.",
+                  "setTimeout(() => {}, 4000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('pago COMPLETED', () => pm.expect(pm.response.json().status).to.eql('COMPLETED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletCToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/payments/{{yankiPaymentId}}",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "payments",
+                "{{yankiPaymentId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Saldo del monedero A (100)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saldo 100', () => pm.expect(pm.response.json().balance).to.eql(100));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletAToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/wallet",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "wallet"
+              ]
+            }
+          }
+        },
+        {
+          "name": "La cuenta principal de la tarjeta de C bajó 100 (150)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saldo 150', () => pm.expect(pm.response.json().balance).to.eql(150));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cardholderToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{cardCheckingAccountId}}/balance",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{cardCheckingAccountId}}",
+                "balance"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A paga 30 a B (monedero a monedero: 201)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('completado al instante', () => pm.expect(pm.response.json().status).to.eql('COMPLETED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletAToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/payments",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"toPhone\": \"{{phoneB}}\", \"amount\": 30}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Saldo del monedero B (30)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saldo 30', () => pm.expect(pm.response.json().balance).to.eql(30));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletBToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/wallet",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "wallet"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A paga 20 a C (a la cuenta de su tarjeta: 202)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 202', () => pm.response.to.have.status(202));",
+                  "if (pm.response.code === 202) { pm.collectionVariables.set('yankiPaymentId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletAToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/payments",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"toPhone\": \"{{phoneC}}\", \"amount\": 20}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "El pago de A a C se completa",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// El pago o la asociación terminan cuando transaction-service responde por Kafka: se da un margen.",
+                  "setTimeout(() => {}, 4000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('pago COMPLETED', () => pm.expect(pm.response.json().status).to.eql('COMPLETED'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletAToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/payments/{{yankiPaymentId}}",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "payments",
+                "{{yankiPaymentId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Saldo del monedero A (50)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saldo 50', () => pm.expect(pm.response.json().balance).to.eql(50));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletAToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/wallet",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "wallet"
+              ]
+            }
+          }
+        },
+        {
+          "name": "La cuenta principal de la tarjeta de C subió 20 (170)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saldo 170', () => pm.expect(pm.response.json().balance).to.eql(170));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{cardholderToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{cardCheckingAccountId}}/balance",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{cardCheckingAccountId}}",
+                "balance"
+              ]
+            }
+          }
+        },
+        {
+          "name": "C paga más que el saldo de su cuenta (202)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 202', () => pm.response.to.have.status(202));",
+                  "if (pm.response.code === 202) { pm.collectionVariables.set('yankiPaymentId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletCToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/payments",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "payments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"toPhone\": \"{{phoneB}}\", \"amount\": 1000}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "El pago queda rechazado con el motivo de la cuenta",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// El pago o la asociación terminan cuando transaction-service responde por Kafka: se da un margen.",
+                  "setTimeout(() => {}, 4000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('pago REJECTED', () => pm.expect(pm.response.json().status).to.eql('REJECTED'));",
+                  "pm.test('motivo', () => pm.expect(pm.response.json().rejectionReason).to.include('Saldo insuficiente'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletCToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/payments/{{yankiPaymentId}}",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "payments",
+                "{{yankiPaymentId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Saldo del monedero B (30)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saldo 30', () => pm.expect(pm.response.json().balance).to.eql(30));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletBToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/wallet",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "wallet"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Pagos enviados y recibidos por A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tres pagos', () => pm.expect(pm.response.json()).to.have.lengthOf(3));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletAToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/payments",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "payments"
+              ]
+            }
+          }
+        },
+        {
+          "name": "A no ve un pago en el que no participa (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error en formato Problem Details', () => pm.expect(pm.response.json()).to.have.property('detail'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletAToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/payments/{{yankiPaymentId}}",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "payments",
+                "{{yankiPaymentId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Crear cliente que asocia su tarjeta a un monedero con saldo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('yankiCustomerId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{customerUrl}}/api/v1/customers",
+              "host": [
+                "{{customerUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "customers"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Diego Yanki\", \"type\": \"PERSONAL\", \"profile\": \"STANDARD\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar usuario del cliente que asocia su tarjeta",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// auth-service conoce al cliente por el evento CustomerCreated de Kafka: se da un margen.",
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "pm.test('usuario del cliente', () => pm.expect(pm.response.json().customerId).to.eql(pm.collectionVariables.get('yankiCustomerId')));",
+                  "pm.test('no devuelve la contraseña', () => pm.expect(pm.response.json()).to.not.have.any.keys('password', 'passwordHash'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/register",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"customerId\": \"{{yankiCustomerId}}\", \"username\": \"diego.{{runId}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Iniciar sesión como cliente que asocia su tarjeta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('token Bearer de 1 hora', () => { const t = pm.response.json(); pm.expect(t.tokenType).to.eql('Bearer'); pm.expect(t.expiresIn).to.eql(3600); });",
+                  "pm.test('el sub del token es el cliente', () => pm.expect(JSON.parse(atob(pm.response.json().accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).sub).to.eql(pm.collectionVariables.get('yankiCustomerId')));",
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('yankiToken', pm.response.json().accessToken); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{authUrl}}/api/v1/auth/login",
+              "host": [
+                "{{authUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"username\": \"diego.{{runId}}\", \"password\": \"Secreta123\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Abrir cuenta de ahorro (0)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('yankiSavingsAccountId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{yankiToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/accounts/savings",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "savings"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"maxMonthlyMovements\": 10, \"openingAmount\": 0}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Emitir tarjeta de débito",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('yankiDebitCardId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{yankiToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{accountUrl}}/api/v1/debit-cards",
+              "host": [
+                "{{accountUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "debit-cards"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"primaryAccountId\": \"{{yankiSavingsAccountId}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Autorizar la tarjeta para el monedero A (saldo 50)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// transaction-service conoce la tarjeta por debit-card-events: se da un margen.",
+                  "setTimeout(() => {}, 3000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) { pm.collectionVariables.set('linkAId', pm.response.json().id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{yankiToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/debit-card-links",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "debit-card-links"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\"phone\": \"{{phoneA}}\", \"debitCardId\": \"{{yankiDebitCardId}}\"}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "El monedero A confirma: su saldo pasa a la cuenta (202)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 202', () => pm.response.to.have.status(202));",
+                  "pm.test('transfiriendo 50', () => { const l = pm.response.json(); pm.expect(l.status).to.eql('TRANSFERRING'); pm.expect(l.transferredBalance).to.eql(50); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletAToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/debit-card-links/{{linkAId}}/confirm",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "debit-card-links",
+                "{{linkAId}}",
+                "confirm"
+              ]
+            }
+          }
+        },
+        {
+          "name": "La asociación queda activa",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// El pago o la asociación terminan cuando transaction-service responde por Kafka: se da un margen.",
+                  "setTimeout(() => {}, 4000);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('activa', () => pm.expect(pm.response.json().find(l => l.id === pm.collectionVariables.get('linkAId')).status).to.eql('ACTIVE'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletAToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/debit-card-links",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "debit-card-links"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Saldo del monedero A (0)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saldo 0', () => pm.expect(pm.response.json().balance).to.eql(0));",
+                  "pm.test('con la tarjeta asociada', () => pm.expect(pm.response.json().debitCardId).to.eql(pm.collectionVariables.get('yankiDebitCardId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{walletAToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{yankiUrl}}/api/v1/yanki/wallet",
+              "host": [
+                "{{yankiUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "yanki",
+                "wallet"
+              ]
+            }
+          }
+        },
+        {
+          "name": "El saldo del monedero llegó a la cuenta principal (50)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('responde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('saldo 50', () => pm.expect(pm.response.json().balance).to.eql(50));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{yankiToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{transactionUrl}}/api/v1/accounts/{{yankiSavingsAccountId}}/balance",
+              "host": [
+                "{{transactionUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "accounts",
+                "{{yankiSavingsAccountId}}",
+                "balance"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "16. Seguridad (API Gateway)",
       "description": "El gateway exige un token válido y toma el id del cliente del token, no del header X-Customer-Id.",
       "item": [
         {
@@ -7366,6 +9719,70 @@
     },
     {
       "key": "cardSavingsAccountId",
+      "value": ""
+    },
+    {
+      "key": "phoneA",
+      "value": ""
+    },
+    {
+      "key": "phoneB",
+      "value": ""
+    },
+    {
+      "key": "phoneC",
+      "value": ""
+    },
+    {
+      "key": "walletAId",
+      "value": ""
+    },
+    {
+      "key": "walletBId",
+      "value": ""
+    },
+    {
+      "key": "walletCId",
+      "value": ""
+    },
+    {
+      "key": "walletAToken",
+      "value": ""
+    },
+    {
+      "key": "walletBToken",
+      "value": ""
+    },
+    {
+      "key": "walletCToken",
+      "value": ""
+    },
+    {
+      "key": "linkCId",
+      "value": ""
+    },
+    {
+      "key": "linkAId",
+      "value": ""
+    },
+    {
+      "key": "yankiPaymentId",
+      "value": ""
+    },
+    {
+      "key": "yankiCustomerId",
+      "value": ""
+    },
+    {
+      "key": "yankiToken",
+      "value": ""
+    },
+    {
+      "key": "yankiSavingsAccountId",
+      "value": ""
+    },
+    {
+      "key": "yankiDebitCardId",
       "value": ""
     },
     {

@@ -57,6 +57,13 @@ services:
     volumes:
       - debt-data:/data/db
 
+  yanki-db:
+    <<: *mongo
+    ports:
+      - "${YANKI_DB_PORT:-27023}:27017"
+    volumes:
+      - yanki-data:/data/db
+
   # Message broker de los eventos entre microservicios, en modo KRaft (sin ZooKeeper).
   # Los contenedores usan kafka:29092; desde el host, localhost:9092.
   kafka:
@@ -269,6 +276,29 @@ services:
       kafka:
         condition: service_healthy
 
+  # Monedero móvil Yanki: solo eventos con los demás microservicios (no llama a sus APIs REST).
+  yanki-service:
+    build: ./yanki-service
+    environment:
+      CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_URL: http://discovery-server:8761/eureka/
+      MONGODB_URI: mongodb://yanki-db:27017/yanki_db
+      REDIS_HOST: redis
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    ports:
+      - "${YANKI_SERVICE_PORT:-8087}:8087"
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      yanki-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
 volumes:
   customer-data:
   account-data:
@@ -276,4 +306,5 @@ volumes:
   transaction-data:
   auth-data:
   debt-data:
+  yanki-data:
   kafka-data:
