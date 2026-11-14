@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MovementResponses.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.infrastructure.web.controller</a> &gt; <span class="el_source">MovementResponses.java</span></div><h1>MovementResponses.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.infrastructure.web.controller;
+
+import dev.bootcamp.transactionservice.domain.model.history.ProductMovement;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.ProductMovementResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.mapper.TransactionWebMapper;
+import io.reactivex.rxjava3.core.Flowable;
+import org.springframework.http.ResponseEntity;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+/**
+ * Arma la respuesta de las consultas de movimientos de un producto.
+ */
+final class MovementResponses {
+
+    private MovementResponses() {}
+
+    /**
+     * Convierte el historial en la respuesta HTTP. Si el producto no existe o no pertenece al
+     * cliente, el error se propaga antes de responder, para que el manejador global devuelva 404 y
+     * no un 200 vacío.
+     */
+    static Mono&lt;ResponseEntity&lt;Flux&lt;ProductMovementResponseDto&gt;&gt;&gt; of(
+            Flowable&lt;ProductMovement&gt; movements) {
+<span class="fc" id="L25">        return Flux.from(movements)</span>
+<span class="fc" id="L26">                .map(TransactionWebMapper::toResponse)</span>
+<span class="fc" id="L27">                .collectList()</span>
+<span class="fc" id="L28">                .map(list -&gt; ResponseEntity.ok(Flux.fromIterable(list)));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

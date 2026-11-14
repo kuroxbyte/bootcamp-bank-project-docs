@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AccountTransactionController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.infrastructure.web.controller</a> &gt; <span class="el_source">AccountTransactionController.java</span></div><h1>AccountTransactionController.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.infrastructure.web.controller;
+
+import dev.bootcamp.transactionservice.application.usecase.GetAvailableBalanceUseCase;
+import dev.bootcamp.transactionservice.application.usecase.GetDailyAverageBalanceUseCase;
+import dev.bootcamp.transactionservice.application.usecase.GetProductMovementsUseCase;
+import dev.bootcamp.transactionservice.application.usecase.RegisterMovementUseCase;
+import dev.bootcamp.transactionservice.application.usecase.TransferUseCase;
+import dev.bootcamp.transactionservice.domain.model.transfer.Transfer;
+import dev.bootcamp.transactionservice.infrastructure.web.api.AccountTransactionsApi;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.AccountBalanceResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.AmountRequestDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.DailyAverageBalanceResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.MovementResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.ProductMovementResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.TransferRequestDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.TransferResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.mapper.TransactionWebMapper;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.YearMonth;
+
+/**
+ * Endpoints de depósitos, retiros, transferencias, saldo y movimientos de cuentas bancarias.
+ */
+<span class="fc" id="L35">@Slf4j</span>
+@RestController
+@RequiredArgsConstructor
+public class AccountTransactionController implements AccountTransactionsApi {
+
+    private final RegisterMovementUseCase registerMovementUseCase;
+    private final GetAvailableBalanceUseCase getAvailableBalanceUseCase;
+    private final GetProductMovementsUseCase getProductMovementsUseCase;
+    private final GetDailyAverageBalanceUseCase getDailyAverageBalanceUseCase;
+    private final TransferUseCase transferUseCase;
+    private final Clock clock;
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;MovementResponseDto&gt;&gt; deposit(
+            String customerId,
+            String accountId,
+            Mono&lt;AmountRequestDto&gt; amountRequestDto,
+            ServerWebExchange exchange) {
+<span class="fc" id="L53">        return amountRequestDto</span>
+<span class="fc" id="L54">                .flatMap(</span>
+                        request -&gt;
+<span class="fc" id="L56">                                Mono.from(</span>
+                                        registerMovementUseCase
+<span class="fc" id="L58">                                                .deposit(</span>
+                                                        customerId,
+                                                        accountId,
+<span class="fc" id="L61">                                                        request.getAmount(),</span>
+<span class="fc" id="L62">                                                        LocalDate.now(clock))</span>
+<span class="fc" id="L63">                                                .toFlowable()))</span>
+<span class="fc" id="L64">                .doOnNext(</span>
+                        movement -&gt;
+<span class="fc" id="L66">                                log.info(</span>
+                                        &quot;Deposit registered accountId={} customerId={} amount={}&quot;,
+                                        accountId,
+                                        customerId,
+<span class="fc" id="L70">                                        movement.amount()))</span>
+<span class="fc" id="L71">                .map(</span>
+                        movement -&gt;
+<span class="fc" id="L73">                                ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="fc" id="L74">                                        .body(TransactionWebMapper.toResponse(movement)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;MovementResponseDto&gt;&gt; withdraw(
+            String customerId,
+            String accountId,
+            Mono&lt;AmountRequestDto&gt; amountRequestDto,
+            ServerWebExchange exchange) {
+<span class="fc" id="L83">        return amountRequestDto</span>
+<span class="fc" id="L84">                .flatMap(</span>
+                        request -&gt;
+<span class="fc" id="L86">                                Mono.from(</span>
+                                        registerMovementUseCase
+<span class="fc" id="L88">                                                .withdraw(</span>
+                                                        customerId,
+                                                        accountId,
+<span class="fc" id="L91">                                                        request.getAmount(),</span>
+<span class="fc" id="L92">                                                        LocalDate.now(clock))</span>
+<span class="fc" id="L93">                                                .toFlowable()))</span>
+<span class="fc" id="L94">                .doOnNext(</span>
+                        movement -&gt;
+<span class="fc" id="L96">                                log.info(</span>
+                                        &quot;Withdrawal registered accountId={} customerId={}&quot;
+                                                + &quot; amount={}&quot;,
+                                        accountId,
+                                        customerId,
+<span class="fc" id="L101">                                        movement.amount()))</span>
+<span class="fc" id="L102">                .map(</span>
+                        movement -&gt;
+<span class="fc" id="L104">                                ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="fc" id="L105">                                        .body(TransactionWebMapper.toResponse(movement)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;TransferResponseDto&gt;&gt; transferToOwnAccount(
+            String customerId,
+            String accountId,
+            Mono&lt;TransferRequestDto&gt; transferRequestDto,
+            ServerWebExchange exchange) {
+<span class="fc" id="L114">        return transferRequestDto.flatMap(request -&gt; created(transferUseCase.transferToOwnAccount(</span>
+                customerId,
+                accountId,
+<span class="fc" id="L117">                request.getTargetAccountId(),</span>
+<span class="fc" id="L118">                request.getAmount(),</span>
+<span class="fc" id="L119">                LocalDate.now(clock))));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;TransferResponseDto&gt;&gt; transferToThirdParty(
+            String customerId,
+            String accountId,
+            Mono&lt;TransferRequestDto&gt; transferRequestDto,
+            ServerWebExchange exchange) {
+<span class="fc" id="L128">        return transferRequestDto.flatMap(request -&gt; created(transferUseCase.transferToThirdParty(</span>
+                customerId,
+                accountId,
+<span class="fc" id="L131">                request.getTargetAccountId(),</span>
+<span class="fc" id="L132">                request.getAmount(),</span>
+<span class="fc" id="L133">                LocalDate.now(clock))));</span>
+    }
+
+    private static Mono&lt;ResponseEntity&lt;TransferResponseDto&gt;&gt; created(Single&lt;Transfer&gt; transfer) {
+<span class="fc" id="L137">        return Mono.from(transfer.toFlowable())</span>
+<span class="fc" id="L138">                .doOnNext(saved -&gt; log.info(</span>
+                        &quot;Transfer registered type={} sourceAccountId={} targetAccountId={}&quot;
+                                + &quot; amount={}&quot;,
+<span class="fc" id="L141">                        saved.type(),</span>
+<span class="fc" id="L142">                        saved.outgoing().accountId(),</span>
+<span class="fc" id="L143">                        saved.incoming().accountId(),</span>
+<span class="fc" id="L144">                        saved.outgoing().amount()))</span>
+<span class="fc" id="L145">                .map(saved -&gt; ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="fc" id="L146">                        .body(TransactionWebMapper.toResponse(saved)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;AccountBalanceResponseDto&gt;&gt; getAccountBalance(
+            String customerId,
+            String accountId,
+            ServerWebExchange exchange) {
+<span class="fc" id="L154">        log.debug(&quot;Fetching balance accountId={} customerId={}&quot;, accountId, customerId);</span>
+<span class="fc" id="L155">        return Mono.from(</span>
+                        getAvailableBalanceUseCase
+<span class="fc" id="L157">                                .getAccountBalance(customerId, accountId)</span>
+<span class="fc" id="L158">                                .toFlowable())</span>
+<span class="fc" id="L159">                .map(</span>
+                        balance -&gt;
+<span class="fc" id="L161">                                ResponseEntity.ok(</span>
+                                        new AccountBalanceResponseDto(accountId, balance)));
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;DailyAverageBalanceResponseDto&gt;&gt; getAccountDailyAverage(
+            String customerId,
+            String accountId,
+            String month,
+            ServerWebExchange exchange) {
+<span class="fc" id="L171">        log.debug(</span>
+                &quot;Fetching daily average accountId={} customerId={} month={}&quot;,
+                accountId,
+                customerId,
+                month);
+<span class="fc" id="L176">        return Mono.from(</span>
+                        getDailyAverageBalanceUseCase
+<span class="fc" id="L178">                                .execute(customerId, accountId, YearMonth.parse(month))</span>
+<span class="fc" id="L179">                                .toFlowable())</span>
+<span class="fc" id="L180">                .map(average -&gt; ResponseEntity.ok(</span>
+<span class="fc" id="L181">                        TransactionWebMapper.toResponse(accountId, average)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;Flux&lt;ProductMovementResponseDto&gt;&gt;&gt; getAccountMovements(
+            String customerId,
+            String accountId,
+            ServerWebExchange exchange) {
+<span class="fc" id="L189">        log.debug(&quot;Fetching movements accountId={} customerId={}&quot;, accountId, customerId);</span>
+<span class="fc" id="L190">        return MovementResponses.of(</span>
+<span class="fc" id="L191">                getProductMovementsUseCase.getAccountMovements(customerId, accountId));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OverdueDebtRule.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">credit-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.creditservice.application.rule</a> &gt; <span class="el_source">OverdueDebtRule.java</span></div><h1>OverdueDebtRule.java</h1><pre class="source lang-java linenums">package dev.bootcamp.creditservice.application.rule;
+
+import dev.bootcamp.creditservice.application.port.CustomerDebtStatusRepository;
+import dev.bootcamp.creditservice.domain.exception.BusinessRuleException;
+import io.reactivex.rxjava3.core.Completable;
+import lombok.RequiredArgsConstructor;
+
+/**
+ * Regla común a todos los productos: un cliente con deuda vencida en algún producto de crédito no
+ * puede adquirir otro producto.
+ *
+ * &lt;p&gt;Usa la copia local del estado de deuda que publica debt-service; si no hay estado para el
+ * cliente, se considera sin deuda vencida.
+ */
+@RequiredArgsConstructor
+public class OverdueDebtRule {
+
+    static final String MESSAGE = &quot;El cliente tiene una deuda vencida en un producto de crédito&quot;;
+
+    private final CustomerDebtStatusRepository customerDebtStatusRepository;
+
+    /**
+     * Verifica que el cliente no tenga deuda vencida.
+     *
+     * @return termina sin error si no tiene; error {@link BusinessRuleException} si tiene
+     */
+    public Completable verify(String customerId) {
+<span class="fc" id="L28">        return customerDebtStatusRepository</span>
+<span class="fc" id="L29">                .hasOverdueDebt(customerId)</span>
+<span class="fc bfc" id="L30" title="All 2 branches covered.">                .flatMapCompletable(overdue -&gt; overdue</span>
+<span class="fc" id="L31">                        ? Completable.error(new BusinessRuleException(MESSAGE))</span>
+<span class="fc" id="L32">                        : Completable.complete());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

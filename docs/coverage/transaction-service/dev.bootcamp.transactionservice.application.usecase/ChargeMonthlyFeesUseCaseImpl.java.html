@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ChargeMonthlyFeesUseCaseImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.application.usecase</a> &gt; <span class="el_source">ChargeMonthlyFeesUseCaseImpl.java</span></div><h1>ChargeMonthlyFeesUseCaseImpl.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.application.usecase;
+
+import dev.bootcamp.transactionservice.application.port.AccountClient;
+import dev.bootcamp.transactionservice.application.port.MovementRepository;
+import dev.bootcamp.transactionservice.domain.model.account.Account;
+import dev.bootcamp.transactionservice.domain.model.movement.Movement;
+import io.reactivex.rxjava3.core.Flowable;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import java.math.BigDecimal;
+import java.time.YearMonth;
+
+/**
+ * Implementación de {@link ChargeMonthlyFeesUseCase}: las comisiones de cada cuenta las calcula
+ * {@link Account#monthlyCharges}.
+ */
+<span class="fc" id="L18">@Slf4j</span>
+@RequiredArgsConstructor
+public class ChargeMonthlyFeesUseCaseImpl implements ChargeMonthlyFeesUseCase {
+    private final AccountClient accountClient;
+    private final MovementRepository movementRepository;
+    private final BigDecimal minimumAverageFee;
+
+    @Override
+    public Flowable&lt;Movement&gt; execute(YearMonth month) {
+<span class="fc" id="L27">        return accountClient.findAll()</span>
+<span class="fc" id="L28">                .concatMap(account -&gt; chargeAccount(account, month)</span>
+<span class="fc" id="L29">                        .onErrorResumeNext(error -&gt; {</span>
+<span class="fc" id="L30">                            log.error(</span>
+                                    &quot;Monthly fees failed accountId={} month={}&quot;,
+<span class="fc" id="L32">                                    account.id(),</span>
+                                    month,
+                                    error);
+<span class="fc" id="L35">                            return Flowable.empty();</span>
+                        }));
+    }
+
+    private Flowable&lt;Movement&gt; chargeAccount(Account account, YearMonth month) {
+<span class="fc" id="L40">        return movementRepository</span>
+<span class="fc" id="L41">                .hasMonthlyCharges(account.id(), month.plusMonths(1).atDay(1))</span>
+<span class="fc bfc" id="L42" title="All 2 branches covered.">                .flatMapPublisher(alreadyCharged -&gt; alreadyCharged</span>
+<span class="fc" id="L43">                        ? Flowable.&lt;Movement&gt;empty()</span>
+<span class="fc" id="L44">                        : movementRepository.findByAccountId(account.id())</span>
+<span class="fc" id="L45">                                .toList()</span>
+<span class="fc" id="L46">                                .map(movements -&gt; account.monthlyCharges(</span>
+                                        month,
+                                        movements,
+                                        minimumAverageFee))
+<span class="fc bfc" id="L50" title="All 2 branches covered.">                                .flatMapPublisher(charges -&gt; charges.isEmpty()</span>
+<span class="fc" id="L51">                                        ? Flowable.&lt;Movement&gt;empty()</span>
+<span class="fc" id="L52">                                        : movementRepository.saveAll(charges)))</span>
+<span class="fc" id="L53">                .doOnNext(charge -&gt; log.info(</span>
+                        &quot;Monthly fee charged accountId={} type={} amount={}&quot;,
+<span class="fc" id="L55">                        charge.accountId(),</span>
+<span class="fc" id="L56">                        charge.type(),</span>
+<span class="fc" id="L57">                        charge.amount()));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

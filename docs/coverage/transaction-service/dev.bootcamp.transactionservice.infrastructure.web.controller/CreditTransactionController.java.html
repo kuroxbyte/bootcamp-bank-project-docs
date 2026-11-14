@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CreditTransactionController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.infrastructure.web.controller</a> &gt; <span class="el_source">CreditTransactionController.java</span></div><h1>CreditTransactionController.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.infrastructure.web.controller;
+
+import dev.bootcamp.transactionservice.application.usecase.GetProductMovementsUseCase;
+import dev.bootcamp.transactionservice.application.usecase.PayCreditUseCase;
+import dev.bootcamp.transactionservice.infrastructure.web.api.CreditTransactionsApi;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.AmountRequestDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.PaymentResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.ProductMovementResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.mapper.TransactionWebMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.time.Clock;
+import java.time.LocalDate;
+
+/**
+ * Endpoints de pagos y movimientos de créditos personales y empresariales.
+ */
+<span class="fc" id="L25">@Slf4j</span>
+@RestController
+@RequiredArgsConstructor
+public class CreditTransactionController implements CreditTransactionsApi {
+
+    private final PayCreditUseCase payCreditUseCase;
+    private final GetProductMovementsUseCase getProductMovementsUseCase;
+    private final Clock clock;
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;PaymentResponseDto&gt;&gt; payThirdPartyCredit(
+            String customerId,
+            String creditId,
+            Mono&lt;AmountRequestDto&gt; amountRequestDto,
+            ServerWebExchange exchange) {
+<span class="fc" id="L40">        return amountRequestDto</span>
+<span class="fc" id="L41">                .flatMap(request -&gt; Mono.from(payCreditUseCase</span>
+<span class="fc" id="L42">                        .payThirdParty(</span>
+                                customerId,
+                                creditId,
+<span class="fc" id="L45">                                request.getAmount(),</span>
+<span class="fc" id="L46">                                LocalDate.now(clock))</span>
+<span class="fc" id="L47">                        .toFlowable()))</span>
+<span class="fc" id="L48">                .doOnNext(payment -&gt; log.info(</span>
+                        &quot;Third-party credit payment registered creditId={} payerCustomerId={}&quot;
+                                + &quot; amount={}&quot;,
+                        creditId,
+                        customerId,
+<span class="fc" id="L53">                        payment.amount()))</span>
+<span class="fc" id="L54">                .map(payment -&gt; ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="fc" id="L55">                        .body(TransactionWebMapper.toResponse(payment)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;PaymentResponseDto&gt;&gt; payCredit(
+            String customerId,
+            String creditId,
+            Mono&lt;AmountRequestDto&gt; amountRequestDto,
+            ServerWebExchange exchange) {
+<span class="fc" id="L64">        return amountRequestDto</span>
+<span class="fc" id="L65">                .flatMap(</span>
+                        request -&gt;
+<span class="fc" id="L67">                                Mono.from(</span>
+                                        payCreditUseCase
+<span class="fc" id="L69">                                                .pay(</span>
+                                                        customerId,
+                                                        creditId,
+<span class="fc" id="L72">                                                        request.getAmount(),</span>
+<span class="fc" id="L73">                                                        LocalDate.now(clock))</span>
+<span class="fc" id="L74">                                                .toFlowable()))</span>
+<span class="fc" id="L75">                .doOnNext(</span>
+                        payment -&gt;
+<span class="fc" id="L77">                                log.info(</span>
+                                        &quot;Credit payment registered creditId={} customerId={}&quot;
+                                                + &quot; amount={}&quot;,
+                                        creditId,
+                                        customerId,
+<span class="fc" id="L82">                                        payment.amount()))</span>
+<span class="fc" id="L83">                .map(</span>
+                        payment -&gt;
+<span class="fc" id="L85">                                ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="fc" id="L86">                                        .body(TransactionWebMapper.toResponse(payment)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;Flux&lt;ProductMovementResponseDto&gt;&gt;&gt; getCreditMovements(
+            String customerId,
+            String creditId,
+            ServerWebExchange exchange) {
+<span class="fc" id="L94">        log.debug(&quot;Fetching movements creditId={} customerId={}&quot;, creditId, customerId);</span>
+<span class="fc" id="L95">        return MovementResponses.of(</span>
+<span class="fc" id="L96">                getProductMovementsUseCase.getCreditMovements(customerId, creditId));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TransactionFee.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">account-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.accountservice.domain.model.account</a> &gt; <span class="el_source">TransactionFee.java</span></div><h1>TransactionFee.java</h1><pre class="source lang-java linenums">package dev.bootcamp.accountservice.domain.model.account;
+
+import dev.bootcamp.accountservice.domain.exception.BusinessRuleException;
+
+import java.math.BigDecimal;
+
+/**
+ * Comisión por transacción de una cuenta: cada mes calendario, los primeros depósitos y retiros no
+ * pagan comisión; cada uno de los siguientes paga un monto fijo. Se cobra en transaction-service.
+ *
+ * @param freeMonthlyTransactions cantidad de transacciones al mes sin comisión; puede ser 0
+ * @param amount                  comisión fija por cada transacción que supera esa cantidad
+ */
+public record TransactionFee(int freeMonthlyTransactions, BigDecimal amount) {
+
+    /**
+     * Valida la cantidad de transacciones sin comisión y el monto de la comisión.
+     *
+     * @throws BusinessRuleException si alguno es negativo o falta el monto
+     */
+<span class="fc" id="L21">    public TransactionFee {</span>
+<span class="fc bfc" id="L22" title="All 2 branches covered.">        if (freeMonthlyTransactions &lt; 0) {</span>
+<span class="fc" id="L23">            throw new BusinessRuleException(</span>
+                    &quot;Las transacciones sin comisión no pueden ser negativas&quot;);
+        }
+<span class="fc bfc" id="L26" title="All 4 branches covered.">        if (amount == null || amount.signum() &lt; 0) {</span>
+<span class="fc" id="L27">            throw new BusinessRuleException(</span>
+                    &quot;La comisión por transacción no puede ser negativa&quot;);
+        }
+<span class="fc" id="L30">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

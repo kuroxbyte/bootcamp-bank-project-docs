@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DebitCard.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">account-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.accountservice.domain.model.debitcard</a> &gt; <span class="el_source">DebitCard.java</span></div><h1>DebitCard.java</h1><pre class="source lang-java linenums">package dev.bootcamp.accountservice.domain.model.debitcard;
+
+import dev.bootcamp.accountservice.domain.exception.BusinessRuleException;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * Tarjeta de débito de un cliente, asociada a una o más de sus cuentas bancarias. Los pagos con la
+ * tarjeta salen de la cuenta principal (se procesan en transaction-service).
+ */
+@Getter
+public class DebitCard {
+    @Setter private String id;
+    private final String customerId;
+    private final List&lt;String&gt; accountIds;
+    private String primaryAccountId;
+
+    /**
+     * Fecha de emisión.
+     */
+    @Setter private LocalDate issuedAt;
+
+    /**
+     * Crea la tarjeta con su cuenta principal y otras cuentas asociadas.
+     *
+     * @param customerId       cliente dueño
+     * @param primaryAccountId cuenta de la que salen los pagos
+     * @param otherAccountIds  otras cuentas asociadas (puede estar vacío o ser null)
+     * @throws BusinessRuleException si falta la cuenta principal o se repite una cuenta
+     */
+<span class="fc" id="L37">    public DebitCard(String customerId, String primaryAccountId, List&lt;String&gt; otherAccountIds) {</span>
+<span class="pc bpc" id="L38" title="1 of 4 branches missed.">        if (primaryAccountId == null || primaryAccountId.isBlank()) {</span>
+<span class="fc" id="L39">            throw new BusinessRuleException(&quot;La tarjeta de débito debe tener una cuenta principal&quot;);</span>
+        }
+<span class="fc" id="L41">        List&lt;String&gt; all = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L42">        all.add(primaryAccountId);</span>
+<span class="fc bfc" id="L43" title="All 2 branches covered.">        if (otherAccountIds != null) {</span>
+<span class="fc" id="L44">            all.addAll(otherAccountIds);</span>
+        }
+<span class="fc" id="L46">        Set&lt;String&gt; unique = new LinkedHashSet&lt;&gt;(all);</span>
+<span class="fc bfc" id="L47" title="All 2 branches covered.">        if (unique.size() != all.size()) {</span>
+<span class="fc" id="L48">            throw new BusinessRuleException(&quot;Una cuenta no puede repetirse en la tarjeta&quot;);</span>
+        }
+<span class="fc" id="L50">        this.customerId = customerId;</span>
+<span class="fc" id="L51">        this.primaryAccountId = primaryAccountId;</span>
+<span class="fc" id="L52">        this.accountIds = new ArrayList&lt;&gt;(unique);</span>
+<span class="fc" id="L53">    }</span>
+
+    /**
+     * Reconstruye una tarjeta guardada.
+     */
+    public static DebitCard restore(
+            String id,
+            String customerId,
+            String primaryAccountId,
+            List&lt;String&gt; accountIds,
+            LocalDate issuedAt) {
+<span class="fc" id="L64">        List&lt;String&gt; others = new ArrayList&lt;&gt;(accountIds);</span>
+<span class="fc" id="L65">        others.remove(primaryAccountId);</span>
+<span class="fc" id="L66">        DebitCard card = new DebitCard(customerId, primaryAccountId, others);</span>
+<span class="fc" id="L67">        card.setId(id);</span>
+<span class="fc" id="L68">        card.setIssuedAt(issuedAt);</span>
+<span class="fc" id="L69">        return card;</span>
+    }
+
+    /**
+     * Cuentas asociadas, empezando por la principal y luego en el orden en que se asociaron.
+     */
+    public List&lt;String&gt; getAccountIds() {
+<span class="fc" id="L76">        return List.copyOf(accountIds);</span>
+    }
+
+    /**
+     * Indica si la tarjeta pertenece al cliente.
+     */
+    public boolean belongsTo(String customerId) {
+<span class="fc" id="L83">        return this.customerId.equals(customerId);</span>
+    }
+
+    /**
+     * Asocia otra cuenta a la tarjeta.
+     *
+     * @throws BusinessRuleException si la cuenta ya está asociada a la tarjeta
+     */
+    public void associateAccount(String accountId) {
+<span class="fc bfc" id="L92" title="All 2 branches covered.">        if (accountIds.contains(accountId)) {</span>
+<span class="fc" id="L93">            throw new BusinessRuleException(&quot;La cuenta ya está asociada a la tarjeta&quot;);</span>
+        }
+<span class="fc" id="L95">        accountIds.add(accountId);</span>
+<span class="fc" id="L96">    }</span>
+
+    /**
+     * Cambia la cuenta principal por otra cuenta ya asociada.
+     *
+     * @throws BusinessRuleException si la cuenta no está asociada a la tarjeta
+     */
+    public void changePrimaryAccount(String accountId) {
+<span class="fc bfc" id="L104" title="All 2 branches covered.">        if (!accountIds.contains(accountId)) {</span>
+<span class="fc" id="L105">            throw new BusinessRuleException(</span>
+                    &quot;La cuenta principal debe estar asociada a la tarjeta&quot;);
+        }
+<span class="fc" id="L108">        primaryAccountId = accountId;</span>
+<span class="fc" id="L109">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

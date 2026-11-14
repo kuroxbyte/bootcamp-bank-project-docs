@@ -1,0 +1,6 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+api-gateway,dev.bootcamp.apigateway.fallback,FallbackController,0,26,0,0,0,6,0,3,0,3
+api-gateway,dev.bootcamp.apigateway.security,SecurityConfig,0,150,0,0,0,33,0,8,0,8
+api-gateway,dev.bootcamp.apigateway.security,ProblemAuthenticationEntryPoint,0,29,0,0,0,7,0,2,0,2
+api-gateway,dev.bootcamp.apigateway.security,IdentityHeaderFilter,0,88,0,6,0,22,0,11,0,8
+api-gateway,dev.bootcamp.apigateway.security,ProblemAccessDeniedHandler,0,24,0,0,0,6,0,2,0,2

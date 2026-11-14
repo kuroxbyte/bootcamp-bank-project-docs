@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>YankiOperationListener.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.infrastructure.messaging</a> &gt; <span class="el_source">YankiOperationListener.java</span></div><h1>YankiOperationListener.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.infrastructure.messaging;
+
+import dev.bootcamp.transactionservice.application.usecase.ProcessYankiOperationUseCase;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.time.LocalDate;
+
+/**
+ * Consume el tópico {@code yanki-operations} de yanki-service: cargos y abonos sobre la cuenta
+ * principal de la tarjeta de un monedero. El contrato está en {@code docs/events/asyncapi.yaml}
+ * del repositorio raíz.
+ *
+ * &lt;p&gt;Ignora los tipos de evento que no conoce. Si procesar falla, la excepción hace que Kafka
+ * vuelva a entregar el mensaje; un pedido repetido se responde con el resultado guardado.
+ */
+<span class="fc" id="L21">@Slf4j</span>
+@Component
+@RequiredArgsConstructor
+public class YankiOperationListener {
+
+    static final String DEBIT_REQUESTED = &quot;YankiAccountDebitRequested&quot;;
+    static final String CREDIT_REQUESTED = &quot;YankiAccountCreditRequested&quot;;
+
+    private final ProcessYankiOperationUseCase processYankiOperationUseCase;
+    private final JsonMapper jsonMapper;
+
+    /**
+     * Procesa un pedido de yanki-service.
+     *
+     * @param message evento en JSON
+     */
+    @KafkaListener(topics = &quot;${messaging.topics.yanki-operations}&quot;)
+    public void onYankiOperation(String message) {
+<span class="fc" id="L39">        JsonNode event = jsonMapper.readTree(message);</span>
+<span class="fc" id="L40">        String eventType = event.path(&quot;eventType&quot;).asString();</span>
+<span class="fc bfc" id="L41" title="All 4 branches covered.">        if (!DEBIT_REQUESTED.equals(eventType) &amp;&amp; !CREDIT_REQUESTED.equals(eventType)) {</span>
+<span class="fc" id="L42">            log.debug(&quot;Ignoring yanki operation type={}&quot;, eventType);</span>
+<span class="fc" id="L43">            return;</span>
+        }
+<span class="fc" id="L45">        String operationId = event.get(&quot;operationId&quot;).asString();</span>
+<span class="fc" id="L46">        processYankiOperationUseCase</span>
+<span class="fc" id="L47">                .execute(</span>
+                        operationId,
+<span class="fc" id="L49">                        DEBIT_REQUESTED.equals(eventType),</span>
+<span class="fc" id="L50">                        event.get(&quot;accountId&quot;).asString(),</span>
+<span class="fc" id="L51">                        event.get(&quot;amount&quot;).decimalValue(),</span>
+<span class="fc" id="L52">                        LocalDate.parse(event.get(&quot;date&quot;).asString()),</span>
+<span class="fc" id="L53">                        event.path(&quot;reversal&quot;).asBoolean(false))</span>
+<span class="fc" id="L54">                .blockingAwait();</span>
+<span class="fc" id="L55">        log.info(&quot;{} processed operationId={}&quot;, eventType, operationId);</span>
+<span class="fc" id="L56">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>YankiOperationResultKafkaPublisher.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.infrastructure.messaging</a> &gt; <span class="el_source">YankiOperationResultKafkaPublisher.java</span></div><h1>YankiOperationResultKafkaPublisher.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.infrastructure.messaging;
+
+import dev.bootcamp.transactionservice.application.port.YankiOperationResultPublisher;
+import dev.bootcamp.transactionservice.domain.model.yanki.YankiOperation;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.stereotype.Component;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * Implementa el puerto {@link YankiOperationResultPublisher} publicando en el tópico
+ * {@code yanki-operation-results}; la clave del mensaje es el id de la operación. El contrato está
+ * en {@code docs/events/asyncapi.yaml} del repositorio raíz.
+ *
+ * &lt;p&gt;El error se propaga: el pedido se vuelve a entregar y se responde con el resultado guardado.
+ */
+<span class="fc" id="L26">@Slf4j</span>
+@Component
+public class YankiOperationResultKafkaPublisher implements YankiOperationResultPublisher {
+
+    static final String COMPLETED = &quot;YankiOperationCompleted&quot;;
+    static final String REJECTED = &quot;YankiOperationRejected&quot;;
+
+    private final KafkaTemplate&lt;String, String&gt; kafkaTemplate;
+    private final JsonMapper jsonMapper;
+    private final Clock clock;
+    private final String topic;
+
+    /**
+     * Crea el publicador con el tópico configurado.
+     */
+    public YankiOperationResultKafkaPublisher(
+            KafkaTemplate&lt;String, String&gt; kafkaTemplate,
+            JsonMapper jsonMapper,
+            Clock clock,
+<span class="fc" id="L45">            @Value(&quot;${messaging.topics.yanki-operation-results}&quot;) String topic) {</span>
+<span class="fc" id="L46">        this.kafkaTemplate = kafkaTemplate;</span>
+<span class="fc" id="L47">        this.jsonMapper = jsonMapper;</span>
+<span class="fc" id="L48">        this.clock = clock;</span>
+<span class="fc" id="L49">        this.topic = topic;</span>
+<span class="fc" id="L50">    }</span>
+
+    @Override
+    public Completable publish(YankiOperation operation) {
+<span class="fc bfc" id="L54" title="All 2 branches covered.">        String eventType = operation.completed() ? COMPLETED : REJECTED;</span>
+<span class="fc" id="L55">        return Completable.defer(() -&gt; {</span>
+<span class="fc" id="L56">            Map&lt;String, Object&gt; event = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L57">            event.put(&quot;eventType&quot;, eventType);</span>
+<span class="fc" id="L58">            event.put(&quot;eventId&quot;, UUID.randomUUID().toString());</span>
+<span class="fc" id="L59">            event.put(&quot;operationId&quot;, operation.operationId());</span>
+<span class="fc bfc" id="L60" title="All 2 branches covered.">            if (!operation.completed()) {</span>
+<span class="fc" id="L61">                event.put(&quot;reason&quot;, operation.reason());</span>
+            }
+<span class="fc" id="L63">            event.put(&quot;occurredAt&quot;, Instant.now(clock).toString());</span>
+<span class="fc" id="L64">            return Completable.fromCompletionStage(kafkaTemplate.send(</span>
+                    topic,
+<span class="fc" id="L66">                    operation.operationId(),</span>
+<span class="fc" id="L67">                    jsonMapper.writeValueAsString(event)));</span>
+        })
+                // send() puede bloquear mientras busca al broker: fuera del hilo de eventos.
+<span class="fc" id="L70">                .subscribeOn(Schedulers.io())</span>
+<span class="fc" id="L71">                .doOnComplete(() -&gt; log.info(</span>
+                        &quot;{} published operationId={}&quot;,
+                        eventType,
+<span class="fc" id="L74">                        operation.operationId()))</span>
+<span class="fc" id="L75">                .doOnError(error -&gt; log.error(</span>
+                        &quot;{} could not be published operationId={}&quot;,
+                        eventType,
+<span class="fc" id="L78">                        operation.operationId(),</span>
+                        error));
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

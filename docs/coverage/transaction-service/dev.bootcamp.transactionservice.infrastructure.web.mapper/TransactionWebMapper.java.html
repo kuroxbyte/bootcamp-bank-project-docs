@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TransactionWebMapper.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.infrastructure.web.mapper</a> &gt; <span class="el_source">TransactionWebMapper.java</span></div><h1>TransactionWebMapper.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.infrastructure.web.mapper;
+
+import dev.bootcamp.transactionservice.domain.model.account.DailyAverageBalance;
+import dev.bootcamp.transactionservice.domain.model.charge.Charge;
+import dev.bootcamp.transactionservice.domain.model.history.ProductMovement;
+import dev.bootcamp.transactionservice.domain.model.movement.Movement;
+import dev.bootcamp.transactionservice.domain.model.payment.Payment;
+import dev.bootcamp.transactionservice.domain.model.report.ProductReport;
+import dev.bootcamp.transactionservice.domain.model.report.ProductTypeReport;
+import dev.bootcamp.transactionservice.domain.model.transfer.Transfer;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.ChargeResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.DailyAverageBalanceResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.MovementResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.MovementTotalResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.MovementTypeDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.PaymentResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.PaymentTargetDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.ProductMovementResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.ProductMovementTypeDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.ProductReportResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.ProductTypeDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.ProductTypeReportResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.TransferResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.TransferTypeDto;
+
+/**
+ * Conversión entre el dominio y los DTOs del contrato OpenAPI.
+ */
+public final class TransactionWebMapper {
+
+    private TransactionWebMapper() {}
+
+    /**
+     * Convierte {@link Movement} en su DTO de respuesta.
+     */
+    public static MovementResponseDto toResponse(Movement movement) {
+<span class="fc" id="L37">        return new MovementResponseDto(</span>
+<span class="fc" id="L38">                movement.accountId(),</span>
+<span class="fc" id="L39">                MovementTypeDto.valueOf(movement.type().name()),</span>
+<span class="fc" id="L40">                movement.amount(),</span>
+<span class="fc" id="L41">                movement.date(),</span>
+<span class="fc" id="L42">                movement.commission())</span>
+<span class="fc" id="L43">                .debitCardId(movement.debitCardId());</span>
+    }
+
+    /**
+     * Convierte {@link Transfer} en su DTO de respuesta, con la comisión de cada cuenta.
+     */
+    public static TransferResponseDto toResponse(Transfer transfer) {
+<span class="fc" id="L50">        return new TransferResponseDto(</span>
+<span class="fc" id="L51">                TransferTypeDto.valueOf(transfer.type().name()),</span>
+<span class="fc" id="L52">                transfer.outgoing().accountId(),</span>
+<span class="fc" id="L53">                transfer.incoming().accountId(),</span>
+<span class="fc" id="L54">                transfer.outgoing().amount(),</span>
+<span class="fc" id="L55">                transfer.outgoing().date(),</span>
+<span class="fc" id="L56">                transfer.outgoing().commission(),</span>
+<span class="fc" id="L57">                transfer.incoming().commission());</span>
+    }
+
+    /**
+     * Convierte {@link Payment} en su DTO de respuesta.
+     */
+    public static PaymentResponseDto toResponse(Payment payment) {
+<span class="fc" id="L64">        return new PaymentResponseDto(</span>
+<span class="fc" id="L65">                PaymentTargetDto.valueOf(payment.target().name()),</span>
+<span class="fc" id="L66">                payment.productId(),</span>
+<span class="fc" id="L67">                payment.amount(),</span>
+<span class="fc" id="L68">                payment.date(),</span>
+<span class="fc" id="L69">                payment.payerCustomerId());</span>
+    }
+
+    /**
+     * Convierte {@link Charge} en su DTO de respuesta.
+     */
+    public static ChargeResponseDto toResponse(Charge charge) {
+<span class="fc" id="L76">        return new ChargeResponseDto(charge.creditCardId(), charge.amount(), charge.date());</span>
+    }
+
+    /**
+     * Convierte {@link ProductMovement} en su DTO de respuesta.
+     */
+    public static ProductMovementResponseDto toResponse(ProductMovement movement) {
+<span class="fc" id="L83">        return new ProductMovementResponseDto(</span>
+<span class="fc" id="L84">                ProductMovementTypeDto.valueOf(movement.type().name()),</span>
+<span class="fc" id="L85">                movement.amount(),</span>
+<span class="fc" id="L86">                movement.date())</span>
+<span class="fc" id="L87">                .commission(movement.commission());</span>
+    }
+
+    /**
+     * Convierte {@link DailyAverageBalance} en su DTO de respuesta; el mínimo y si se alcanza solo
+     * vienen si la cuenta exige un mínimo.
+     */
+    public static DailyAverageBalanceResponseDto toResponse(
+            String accountId,
+            DailyAverageBalance average) {
+<span class="fc" id="L97">        return new DailyAverageBalanceResponseDto(</span>
+                accountId,
+<span class="fc" id="L99">                average.month().toString(),</span>
+<span class="fc" id="L100">                average.days(),</span>
+<span class="fc" id="L101">                average.average())</span>
+<span class="fc" id="L102">                .minimumDailyAverage(average.minimumDailyAverage())</span>
+<span class="fc" id="L103">                .meetsMinimum(average.meetsMinimum());</span>
+    }
+
+    /**
+     * Convierte {@link ProductReport} en su DTO de respuesta.
+     */
+    public static ProductReportResponseDto toResponse(ProductReport report) {
+<span class="fc" id="L110">        return new ProductReportResponseDto(</span>
+<span class="fc" id="L111">                report.from(),</span>
+<span class="fc" id="L112">                report.to(),</span>
+<span class="fc" id="L113">                report.products().stream().map(TransactionWebMapper::toResponse).toList());</span>
+    }
+
+    private static ProductTypeReportResponseDto toResponse(ProductTypeReport product) {
+<span class="fc" id="L117">        return new ProductTypeReportResponseDto(</span>
+<span class="fc" id="L118">                ProductTypeDto.valueOf(product.type().name()),</span>
+<span class="fc" id="L119">                product.openedProducts(),</span>
+<span class="fc" id="L120">                product.transactions(),</span>
+<span class="fc" id="L121">                product.commissions(),</span>
+<span class="fc" id="L122">                product.movements().stream()</span>
+<span class="fc" id="L123">                        .map(total -&gt; new MovementTotalResponseDto(</span>
+<span class="fc" id="L124">                                ProductMovementTypeDto.valueOf(total.type().name()),</span>
+<span class="fc" id="L125">                                total.count(),</span>
+<span class="fc" id="L126">                                total.amount()))</span>
+<span class="fc" id="L127">                        .toList());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

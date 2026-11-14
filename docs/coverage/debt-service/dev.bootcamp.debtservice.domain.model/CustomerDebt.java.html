@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CustomerDebt.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">debt-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.debtservice.domain.model</a> &gt; <span class="el_source">CustomerDebt.java</span></div><h1>CustomerDebt.java</h1><pre class="source lang-java linenums">package dev.bootcamp.debtservice.domain.model;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.function.Predicate;
+
+/**
+ * Productos de crédito de un cliente con sus pagos y consumos, para calcular su deuda vencida.
+ *
+ * @param customerId  id del cliente
+ * @param credits     créditos del cliente
+ * @param creditCards tarjetas de crédito del cliente
+ * @param movements   pagos y consumos de esos productos
+ */
+<span class="fc" id="L16">public record CustomerDebt(</span>
+        String customerId,
+        List&lt;Credit&gt; credits,
+        List&lt;CreditCard&gt; creditCards,
+        List&lt;DebtMovement&gt; movements) {
+
+    /**
+     * Calcula el estado de deuda del cliente en una fecha.
+     *
+     * &lt;ul&gt;
+     *   &lt;li&gt;Crédito: desde el día siguiente a su fecha de vencimiento, vence lo que falte pagar
+     *       del monto otorgado.
+     *   &lt;li&gt;Tarjeta: los consumos de un mes se pagan hasta el día de pago del mes siguiente.
+     *       Pasado ese día, vence la parte de los consumos de los meses ya cerrados que los pagos
+     *       a la tarjeta no cubren.
+     * &lt;/ul&gt;
+     *
+     * @param today fecha de la evaluación
+     * @return el monto vencido total (0 si no tiene deuda vencida)
+     */
+    public CustomerDebtStatus evaluate(LocalDate today) {
+<span class="fc" id="L37">        BigDecimal overdue = BigDecimal.ZERO;</span>
+<span class="fc bfc" id="L38" title="All 2 branches covered.">        for (Credit credit : credits) {</span>
+<span class="fc" id="L39">            overdue = overdue.add(overdueOf(credit, today));</span>
+<span class="fc" id="L40">        }</span>
+<span class="fc bfc" id="L41" title="All 2 branches covered.">        for (CreditCard creditCard : creditCards) {</span>
+<span class="fc" id="L42">            overdue = overdue.add(overdueOf(creditCard, today));</span>
+<span class="fc" id="L43">        }</span>
+<span class="fc" id="L44">        return new CustomerDebtStatus(customerId, overdue);</span>
+    }
+
+    private BigDecimal overdueOf(Credit credit, LocalDate today) {
+<span class="fc bfc" id="L48" title="All 2 branches covered.">        if (!today.isAfter(credit.dueDate())) {</span>
+<span class="fc" id="L49">            return BigDecimal.ZERO;</span>
+        }
+<span class="fc bfc" id="L51" title="All 2 branches covered.">        BigDecimal paid = total(movement -&gt; movement.type() == DebtMovementType.CREDIT_PAYMENT</span>
+<span class="fc bfc" id="L52" title="All 2 branches covered.">                &amp;&amp; movement.productId().equals(credit.id()));</span>
+<span class="fc" id="L53">        return positive(credit.amount().subtract(paid));</span>
+    }
+
+    private BigDecimal overdueOf(CreditCard creditCard, LocalDate today) {
+        // Primer día del mes siguiente al último mes cuyo pago ya venció: los consumos anteriores
+        // a esta fecha debían estar pagados.
+<span class="fc bfc" id="L59" title="All 2 branches covered.">        LocalDate cutoff = today.getDayOfMonth() &gt; creditCard.paymentDueDay()</span>
+<span class="fc" id="L60">                ? today.withDayOfMonth(1)</span>
+<span class="fc" id="L61">                : today.withDayOfMonth(1).minusMonths(1);</span>
+<span class="fc bfc" id="L62" title="All 2 branches covered.">        BigDecimal dueCharges = total(movement -&gt; movement.type()</span>
+                == DebtMovementType.CREDIT_CARD_CHARGE
+<span class="pc bpc" id="L64" title="1 of 2 branches missed.">                &amp;&amp; movement.productId().equals(creditCard.id())</span>
+<span class="fc bfc" id="L65" title="All 2 branches covered.">                &amp;&amp; movement.date().isBefore(cutoff));</span>
+<span class="fc bfc" id="L66" title="All 2 branches covered.">        BigDecimal paid = total(movement -&gt; movement.type() == DebtMovementType.CREDIT_CARD_PAYMENT</span>
+<span class="pc bpc" id="L67" title="1 of 2 branches missed.">                &amp;&amp; movement.productId().equals(creditCard.id()));</span>
+<span class="fc" id="L68">        return positive(dueCharges.subtract(paid));</span>
+    }
+
+    private BigDecimal total(Predicate&lt;DebtMovement&gt; filter) {
+<span class="fc" id="L72">        return movements.stream()</span>
+<span class="fc" id="L73">                .filter(filter)</span>
+<span class="fc" id="L74">                .map(DebtMovement::amount)</span>
+<span class="fc" id="L75">                .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+    }
+
+    private static BigDecimal positive(BigDecimal amount) {
+<span class="fc bfc" id="L79" title="All 2 branches covered.">        return amount.signum() &gt; 0 ? amount : BigDecimal.ZERO;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

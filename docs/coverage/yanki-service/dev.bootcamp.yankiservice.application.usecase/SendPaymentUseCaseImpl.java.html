@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SendPaymentUseCaseImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">yanki-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.yankiservice.application.usecase</a> &gt; <span class="el_source">SendPaymentUseCaseImpl.java</span></div><h1>SendPaymentUseCaseImpl.java</h1><pre class="source lang-java linenums">package dev.bootcamp.yankiservice.application.usecase;
+
+import dev.bootcamp.yankiservice.application.port.AccountOperationPublisher;
+import dev.bootcamp.yankiservice.application.port.DebitCardRepository;
+import dev.bootcamp.yankiservice.application.port.WalletRepository;
+import dev.bootcamp.yankiservice.application.port.YankiPaymentRepository;
+import dev.bootcamp.yankiservice.domain.exception.BusinessRuleException;
+import dev.bootcamp.yankiservice.domain.exception.NotFoundException;
+import dev.bootcamp.yankiservice.domain.exception.OperationUnavailableException;
+import dev.bootcamp.yankiservice.domain.model.operation.OperationId;
+import dev.bootcamp.yankiservice.domain.model.payment.YankiPayment;
+import dev.bootcamp.yankiservice.domain.model.wallet.Wallet;
+import dev.bootcamp.yankiservice.domain.model.wallet.WalletStatus;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Maybe;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Optional;
+
+/**
+ * Implementación de {@link SendPaymentUseCase}.
+ */
+@RequiredArgsConstructor
+public class SendPaymentUseCaseImpl implements SendPaymentUseCase {
+    static final String INSUFFICIENT_BALANCE = &quot;Saldo insuficiente en el monedero&quot;;
+    static final String UNAVAILABLE =
+            &quot;No se pudo procesar el pago en este momento; intente nuevamente&quot;;
+
+    private final WalletRepository walletRepository;
+    private final YankiPaymentRepository paymentRepository;
+    private final DebitCardRepository debitCardRepository;
+    private final AccountOperationPublisher operationPublisher;
+
+    @Override
+    public Single&lt;YankiPayment&gt; execute(
+            String walletId,
+            String targetPhone,
+            BigDecimal amount,
+            LocalDate date) {
+<span class="fc" id="L43">        Single&lt;Wallet&gt; source = activeWallet(walletRepository.findById(walletId),</span>
+                new NotFoundException(&quot;El monedero no existe&quot;));
+<span class="fc" id="L45">        Single&lt;Wallet&gt; target = activeWallet(walletRepository.findByPhone(targetPhone),</span>
+                new NotFoundException(&quot;El celular &quot; + targetPhone + &quot; no tiene monedero Yanki&quot;));
+<span class="fc" id="L47">        return Single.zip(source, target, (from, to) -&gt; new Wallet[] {from, to})</span>
+<span class="fc" id="L48">                .flatMap(wallets -&gt; Single.zip(</span>
+<span class="fc" id="L49">                        accountOf(wallets[0]),</span>
+<span class="fc" id="L50">                        accountOf(wallets[1]),</span>
+<span class="fc" id="L51">                        (fromAccount, toAccount) -&gt; new YankiPayment(</span>
+<span class="fc" id="L52">                                wallets[0].getId(),</span>
+<span class="fc" id="L53">                                wallets[0].getPhone(),</span>
+<span class="fc" id="L54">                                fromAccount.orElse(null),</span>
+<span class="fc" id="L55">                                wallets[1].getId(),</span>
+<span class="fc" id="L56">                                wallets[1].getPhone(),</span>
+<span class="fc" id="L57">                                toAccount.orElse(null),</span>
+                                amount,
+                                date)))
+<span class="fc" id="L60">                .flatMap(this::start);</span>
+    }
+
+    private Single&lt;YankiPayment&gt; start(YankiPayment payment) {
+<span class="fc bfc" id="L64" title="All 2 branches covered.">        if (payment.fromAccount()) {</span>
+            // Cuenta → cualquiera: primero el cargo a la cuenta del origen.
+<span class="fc" id="L66">            return paymentRepository.save(payment)</span>
+<span class="fc" id="L67">                    .flatMap(saved -&gt; request(saved, operationPublisher.requestDebit(</span>
+<span class="fc" id="L68">                            OperationId.payment(saved.getId(), OperationId.DEBIT).toString(),</span>
+<span class="fc" id="L69">                            saved.getSourceAccountId(),</span>
+<span class="fc" id="L70">                            saved.getAmount(),</span>
+<span class="fc" id="L71">                            saved.getDate()), Completable.complete()));</span>
+        }
+<span class="fc" id="L73">        Completable debitWallet = walletRepository</span>
+<span class="fc" id="L74">                .debitBalance(payment.getSourceWalletId(), payment.getAmount())</span>
+<span class="fc bfc" id="L75" title="All 2 branches covered.">                .flatMapCompletable(debited -&gt; debited</span>
+<span class="fc" id="L76">                        ? Completable.complete()</span>
+<span class="fc" id="L77">                        : Completable.error(new BusinessRuleException(INSUFFICIENT_BALANCE)));</span>
+<span class="fc bfc" id="L78" title="All 2 branches covered.">        if (!payment.toAccount()) {</span>
+            // Monedero → monedero: todo en el momento.
+<span class="fc" id="L80">            return debitWallet</span>
+<span class="fc" id="L81">                    .andThen(Completable.defer(() -&gt; walletRepository.creditBalance(</span>
+<span class="fc" id="L82">                            payment.getTargetWalletId(),</span>
+<span class="fc" id="L83">                            payment.getAmount())))</span>
+<span class="fc" id="L84">                    .andThen(Single.defer(() -&gt; {</span>
+<span class="fc" id="L85">                        payment.complete();</span>
+<span class="fc" id="L86">                        return paymentRepository.save(payment);</span>
+                    }));
+        }
+        // Monedero → cuenta: se descuenta del monedero y se pide el abono.
+<span class="fc" id="L90">        Completable refundWallet = Completable.defer(() -&gt; walletRepository.creditBalance(</span>
+<span class="fc" id="L91">                payment.getSourceWalletId(),</span>
+<span class="fc" id="L92">                payment.getAmount()));</span>
+<span class="fc" id="L93">        return debitWallet</span>
+<span class="fc" id="L94">                .andThen(Single.defer(() -&gt; paymentRepository.save(payment)))</span>
+<span class="fc" id="L95">                .flatMap(saved -&gt; request(saved, operationPublisher.requestCredit(</span>
+<span class="fc" id="L96">                        OperationId.payment(saved.getId(), OperationId.CREDIT).toString(),</span>
+<span class="fc" id="L97">                        saved.getTargetAccountId(),</span>
+<span class="fc" id="L98">                        saved.getAmount(),</span>
+<span class="fc" id="L99">                        saved.getDate(),</span>
+                        false), refundWallet));
+    }
+
+    // Publica el pedido; si falla, devuelve lo descontado, rechaza el pago y responde 503.
+    private Single&lt;YankiPayment&gt; request(
+            YankiPayment payment,
+            Completable operation,
+            Completable compensation) {
+<span class="fc" id="L108">        return operation</span>
+<span class="fc" id="L109">                .andThen(Single.just(payment))</span>
+<span class="fc" id="L110">                .onErrorResumeNext(error -&gt; compensation</span>
+<span class="fc" id="L111">                        .andThen(Single.defer(() -&gt; {</span>
+<span class="fc" id="L112">                            payment.reject(UNAVAILABLE);</span>
+<span class="fc" id="L113">                            return paymentRepository.save(payment);</span>
+                        }))
+<span class="fc" id="L115">                        .flatMap(rejected -&gt; Single.error(</span>
+                                new OperationUnavailableException(UNAVAILABLE, error))));
+    }
+
+    private static Single&lt;Wallet&gt; activeWallet(Maybe&lt;Wallet&gt; wallet, RuntimeException notFound) {
+<span class="fc" id="L120">        return wallet</span>
+<span class="fc" id="L121">                .switchIfEmpty(Single.error(notFound))</span>
+<span class="fc bfc" id="L122" title="All 2 branches covered.">                .flatMap(found -&gt; found.getStatus() == WalletStatus.ACTIVE</span>
+<span class="fc" id="L123">                        ? Single.just(found)</span>
+<span class="fc" id="L124">                        : Single.error(new BusinessRuleException(</span>
+<span class="fc" id="L125">                                &quot;El monedero &quot; + found.getPhone()</span>
+                                        + &quot; está asociando una tarjeta; intente en unos&quot;
+                                        + &quot; segundos&quot;)));
+    }
+
+    // Cuenta principal de la tarjeta del monedero, o vacío si usa su propio saldo.
+    private Single&lt;Optional&lt;String&gt;&gt; accountOf(Wallet wallet) {
+<span class="fc bfc" id="L132" title="All 2 branches covered.">        if (!wallet.hasDebitCard()) {</span>
+<span class="fc" id="L133">            return Single.just(Optional.empty());</span>
+        }
+<span class="fc" id="L135">        return debitCardRepository.findById(wallet.getDebitCardId())</span>
+<span class="fc" id="L136">                .map(card -&gt; Optional.of(card.primaryAccountId()))</span>
+<span class="fc" id="L137">                .switchIfEmpty(Single.error(() -&gt; new BusinessRuleException(</span>
+                        &quot;La tarjeta de débito del monedero no está disponible&quot;)));
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

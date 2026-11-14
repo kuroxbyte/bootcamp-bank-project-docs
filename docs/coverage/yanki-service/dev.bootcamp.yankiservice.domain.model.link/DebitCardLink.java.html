@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DebitCardLink.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">yanki-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.yankiservice.domain.model.link</a> &gt; <span class="el_source">DebitCardLink.java</span></div><h1>DebitCardLink.java</h1><pre class="source lang-java linenums">package dev.bootcamp.yankiservice.domain.model.link;
+
+import lombok.Getter;
+import lombok.Setter;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+/**
+ * Asociación de una tarjeta de débito del banco con un monedero. Tiene dos pasos: el cliente dueño
+ * de la tarjeta la autoriza y el dueño del monedero la confirma; así nadie asocia su tarjeta a un
+ * monedero ajeno para quedarse con su saldo.
+ */
+@Getter
+public class DebitCardLink {
+    @Setter private String id;
+    private final String customerId;
+    private final String debitCardId;
+    private final String walletId;
+    private final String phone;
+    private final LocalDate requestedAt;
+    @Setter private LinkStatus status;
+
+    /**
+     * Saldo del monedero que se transfiere a la cuenta principal al confirmar.
+     */
+    @Setter private BigDecimal transferredBalance;
+
+    @Setter private String rejectionReason;
+
+    /**
+     * Crea una asociación pendiente de confirmación.
+     */
+    public DebitCardLink(
+            String customerId,
+            String debitCardId,
+            String walletId,
+            String phone,
+<span class="fc" id="L39">            LocalDate requestedAt) {</span>
+<span class="fc" id="L40">        this.customerId = customerId;</span>
+<span class="fc" id="L41">        this.debitCardId = debitCardId;</span>
+<span class="fc" id="L42">        this.walletId = walletId;</span>
+<span class="fc" id="L43">        this.phone = phone;</span>
+<span class="fc" id="L44">        this.requestedAt = requestedAt;</span>
+<span class="fc" id="L45">        this.status = LinkStatus.PENDING_CONFIRMATION;</span>
+<span class="fc" id="L46">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

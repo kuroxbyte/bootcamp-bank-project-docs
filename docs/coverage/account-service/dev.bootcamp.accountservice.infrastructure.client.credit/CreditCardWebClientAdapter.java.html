@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CreditCardWebClientAdapter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">account-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.accountservice.infrastructure.client.credit</a> &gt; <span class="el_source">CreditCardWebClientAdapter.java</span></div><h1>CreditCardWebClientAdapter.java</h1><pre class="source lang-java linenums">package dev.bootcamp.accountservice.infrastructure.client.credit;
+
+import dev.bootcamp.accountservice.application.port.CreditCardClient;
+import dev.bootcamp.accountservice.infrastructure.client.RemoteLookup;
+import dev.bootcamp.accountservice.infrastructure.client.credit.dto.CreditCardResponseDto;
+import io.reactivex.rxjava3.core.Single;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
+
+/**
+ * Implementa el puerto {@link CreditCardClient} consultando credit-service con WebClient.
+ */
+@Component
+public class CreditCardWebClientAdapter implements CreditCardClient {
+
+    private static final String SERVICE_NAME = &quot;credit-service&quot;;
+
+    private final WebClient webClient;
+    private final RemoteLookup remoteLookup;
+
+    /**
+     * Crea el cliente con la URL base configurada; las consultas pasan por un circuit breaker.
+     */
+    public CreditCardWebClientAdapter(
+            WebClient.Builder webClientBuilder,
+            @Value(&quot;${clients.credit-service.base-url}&quot;) String baseUrl,
+<span class="fc" id="L28">            RemoteLookup remoteLookup) {</span>
+<span class="fc" id="L29">        this.webClient = webClientBuilder.baseUrl(baseUrl).build();</span>
+<span class="fc" id="L30">        this.remoteLookup = remoteLookup;</span>
+<span class="fc" id="L31">    }</span>
+
+    @Override
+    public Single&lt;Boolean&gt; hasCreditCard(String customerId) {
+<span class="fc" id="L35">        return remoteLookup</span>
+<span class="fc" id="L36">                .findById(</span>
+                        webClient
+<span class="fc" id="L38">                                .get()</span>
+<span class="fc" id="L39">                                .uri(&quot;/api/v1/credit-cards&quot;)</span>
+<span class="fc" id="L40">                                .header(&quot;X-Customer-Id&quot;, customerId)</span>
+<span class="fc" id="L41">                                .retrieve()</span>
+<span class="fc" id="L42">                                .bodyToFlux(CreditCardResponseDto.class)</span>
+<span class="fc" id="L43">                                .hasElements(),</span>
+                        SERVICE_NAME,
+                        customerId)
+<span class="fc" id="L46">                .defaultIfEmpty(false);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

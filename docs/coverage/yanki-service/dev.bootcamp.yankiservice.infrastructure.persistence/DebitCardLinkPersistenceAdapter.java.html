@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DebitCardLinkPersistenceAdapter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">yanki-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.yankiservice.infrastructure.persistence</a> &gt; <span class="el_source">DebitCardLinkPersistenceAdapter.java</span></div><h1>DebitCardLinkPersistenceAdapter.java</h1><pre class="source lang-java linenums">package dev.bootcamp.yankiservice.infrastructure.persistence;
+
+import dev.bootcamp.yankiservice.application.port.DebitCardLinkRepository;
+import dev.bootcamp.yankiservice.domain.model.link.DebitCardLink;
+import dev.bootcamp.yankiservice.domain.model.link.LinkStatus;
+import io.reactivex.rxjava3.core.Flowable;
+import io.reactivex.rxjava3.core.Maybe;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+/**
+ * Implementa el puerto {@link DebitCardLinkRepository} con MongoDB reactivo.
+ */
+@Component
+@RequiredArgsConstructor
+public class DebitCardLinkPersistenceAdapter implements DebitCardLinkRepository {
+
+    private final DebitCardLinkMongoRepository mongoRepository;
+
+    @Override
+    public Single&lt;DebitCardLink&gt; save(DebitCardLink link) {
+<span class="fc" id="L23">        return Single.fromPublisher(mongoRepository.save(new DebitCardLinkDocument(</span>
+<span class="fc" id="L24">                        link.getId(),</span>
+<span class="fc" id="L25">                        link.getCustomerId(),</span>
+<span class="fc" id="L26">                        link.getDebitCardId(),</span>
+<span class="fc" id="L27">                        link.getWalletId(),</span>
+<span class="fc" id="L28">                        link.getPhone(),</span>
+<span class="fc" id="L29">                        link.getRequestedAt(),</span>
+<span class="fc" id="L30">                        link.getStatus().name(),</span>
+<span class="fc" id="L31">                        link.getTransferredBalance(),</span>
+<span class="fc" id="L32">                        link.getRejectionReason())))</span>
+<span class="fc" id="L33">                .map(DebitCardLinkPersistenceAdapter::toDomain);</span>
+    }
+
+    @Override
+    public Maybe&lt;DebitCardLink&gt; findById(String linkId) {
+<span class="fc" id="L38">        return Maybe.fromPublisher(mongoRepository.findById(linkId))</span>
+<span class="fc" id="L39">                .map(DebitCardLinkPersistenceAdapter::toDomain);</span>
+    }
+
+    @Override
+    public Flowable&lt;DebitCardLink&gt; findByWalletId(String walletId) {
+<span class="fc" id="L44">        return Flowable.fromPublisher(mongoRepository.findByWalletId(walletId))</span>
+<span class="fc" id="L45">                .map(DebitCardLinkPersistenceAdapter::toDomain);</span>
+    }
+
+    private static DebitCardLink toDomain(DebitCardLinkDocument document) {
+<span class="fc" id="L49">        DebitCardLink link = new DebitCardLink(</span>
+<span class="fc" id="L50">                document.getCustomerId(),</span>
+<span class="fc" id="L51">                document.getDebitCardId(),</span>
+<span class="fc" id="L52">                document.getWalletId(),</span>
+<span class="fc" id="L53">                document.getPhone(),</span>
+<span class="fc" id="L54">                document.getRequestedAt());</span>
+<span class="fc" id="L55">        link.setId(document.getId());</span>
+<span class="fc" id="L56">        link.setStatus(LinkStatus.valueOf(document.getStatus()));</span>
+<span class="fc" id="L57">        link.setTransferredBalance(document.getTransferredBalance());</span>
+<span class="fc" id="L58">        link.setRejectionReason(document.getRejectionReason());</span>
+<span class="fc" id="L59">        return link;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

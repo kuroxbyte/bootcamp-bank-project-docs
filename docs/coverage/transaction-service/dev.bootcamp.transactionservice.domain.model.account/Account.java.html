@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Account.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.domain.model.account</a> &gt; <span class="el_source">Account.java</span></div><h1>Account.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.domain.model.account;
+
+import dev.bootcamp.transactionservice.domain.exception.BusinessRuleException;
+import dev.bootcamp.transactionservice.domain.model.movement.Movement;
+import dev.bootcamp.transactionservice.domain.model.movement.MovementType;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Vista local de la cuenta, obtenida de account-service, con su monto de apertura (saldo inicial).
+ *
+ * @param movementPolicy      regla de movimientos según el tipo de cuenta ({@link
+ *     SavingsMovementPolicy}, {@link CheckingMovementPolicy} o {@link FixedTermMovementPolicy})
+ * @param openedAt            fecha de apertura de la cuenta
+ * @param minimumDailyAverage monto mínimo de promedio diario que exige cada mes; solo la cuenta
+ *     de ahorro VIP lo tiene, en las demás es null
+ * @param transactionFee      transacciones al mes sin comisión y comisión por cada transacción
+ *     adicional
+ * @param maintenanceFee      comisión de mantenimiento que se cobra cada mes; solo la cuenta
+ *     corriente la tiene (0 en PYME), en las demás es 0
+ */
+public record Account(
+        String id,
+        String customerId,
+        MovementPolicy movementPolicy,
+        BigDecimal openingAmount,
+        LocalDate openedAt,
+        BigDecimal minimumDailyAverage,
+        TransactionFee transactionFee,
+        BigDecimal maintenanceFee) {
+
+    /**
+     * Normaliza la comisión de mantenimiento: si no viene, es 0.
+     */
+<span class="fc" id="L42">    public Account {</span>
+<span class="fc bfc" id="L43" title="All 2 branches covered.">        maintenanceFee = maintenanceFee == null ? BigDecimal.ZERO : maintenanceFee;</span>
+<span class="fc" id="L44">    }</span>
+
+    /**
+     * Crea una cuenta sin comisión de mantenimiento.
+     */
+    public Account(
+            String id,
+            String customerId,
+            MovementPolicy movementPolicy,
+            BigDecimal openingAmount,
+            LocalDate openedAt,
+            BigDecimal minimumDailyAverage,
+            TransactionFee transactionFee) {
+<span class="fc" id="L57">        this(</span>
+                id,
+                customerId,
+                movementPolicy,
+                openingAmount,
+                openedAt,
+                minimumDailyAverage,
+                transactionFee,
+                BigDecimal.ZERO);
+<span class="fc" id="L66">    }</span>
+
+    /**
+     * Saldo de la cuenta: monto de apertura más depósitos menos retiros, descontadas las
+     * comisiones.
+     *
+     * @param movementsBalance suma de depósitos menos suma de retiros y de comisiones
+     * @return saldo actual
+     */
+    public BigDecimal balance(BigDecimal movementsBalance) {
+<span class="fc" id="L76">        return openingAmount.add(movementsBalance);</span>
+    }
+
+    /**
+     * Indica si la cuenta pertenece al cliente.
+     */
+    public boolean belongsTo(String customerId) {
+<span class="fc" id="L83">        return this.customerId.equals(customerId);</span>
+    }
+
+    /**
+     * Valida un nuevo movimiento (depósito, retiro o transferencia) y le asigna la comisión que le
+     * corresponde.
+     *
+     * &lt;p&gt;No guarda nada: si el movimiento es válido devuelve una copia con su comisión, que quien
+     * lo invoca debe guardar; si no, lanza una excepción y el movimiento no debe guardarse.
+     *
+     * &lt;p&gt;Aplica en este orden:
+     *
+     * &lt;ol&gt;
+     *   &lt;li&gt;La regla del tipo de cuenta, delegada en {@link #movementPolicy()} (límite mensual del
+     *       ahorro, día único del plazo fijo; la corriente no tiene límite).
+     *   &lt;li&gt;La comisión por transacción ({@link #transactionFee()}): 0 mientras el movimiento esté
+     *       dentro de las transacciones sin comisión del mes; si no, el monto fijo de la comisión.
+     *   &lt;li&gt;Fondos suficientes: el saldo después del movimiento y su comisión no puede quedar
+     *       negativo. Un retiro debe cubrir monto más comisión (puede dejar la cuenta en 0); un
+     *       depósito con comisión requiere que el saldo cubra la parte de la comisión que el
+     *       depósito no alcanza a pagar.
+     * &lt;/ol&gt;
+     *
+     * @param movement         movimiento a validar, todavía sin comisión
+     * @param movementsInMonth cantidad de movimientos ya guardados en esta cuenta durante el mes
+     *     calendario de {@code movement.date()}, sin contar el nuevo
+     * @param balance          saldo actual de la cuenta antes del movimiento (ver {@link #balance})
+     * @return el movimiento con su comisión
+     * @throws BusinessRuleException si la regla del tipo de cuenta no lo permite o si el saldo no
+     *     alcanza para el movimiento y su comisión
+     */
+    public Movement prepareMovement(Movement movement, long movementsInMonth, BigDecimal balance) {
+<span class="fc" id="L115">        movementPolicy.validate(movement, movementsInMonth);</span>
+<span class="fc" id="L116">        Movement charged =</span>
+<span class="fc" id="L117">                movement.withCommission(transactionFee.commissionFor(movementsInMonth));</span>
+<span class="fc" id="L118">        validateSufficientFunds(charged, balance);</span>
+<span class="fc" id="L119">        return charged;</span>
+    }
+
+    /**
+     * Calcula el saldo promedio diario de la cuenta en un mes.
+     *
+     * &lt;p&gt;Se toman los días del mes en que la cuenta estuvo abierta, desde el día de apertura (o el
+     * primero del mes) hasta hoy (o el último del mes). El saldo de cada día es el saldo al final
+     * de ese día: monto de apertura más depósitos menos retiros hasta ese día inclusive. El
+     * promedio es la suma de esos saldos entre la cantidad de días, redondeado a 2 decimales.
+     *
+     * @param month     mes consultado
+     * @param today     fecha actual; los días posteriores no se cuentan
+     * @param movements depósitos y retiros de la cuenta (pueden incluir otros meses)
+     * @return el promedio del mes junto con el mínimo que exige la cuenta, si lo tiene
+     * @throws BusinessRuleException si la cuenta no estuvo abierta ningún día del mes hasta hoy
+     */
+    public DailyAverageBalance dailyAverageBalance(
+            YearMonth month,
+            LocalDate today,
+            List&lt;Movement&gt; movements) {
+<span class="fc" id="L140">        LocalDate from = later(month.atDay(1), openedAt);</span>
+<span class="fc" id="L141">        LocalDate to = earlier(month.atEndOfMonth(), today);</span>
+<span class="fc bfc" id="L142" title="All 2 branches covered.">        if (from.isAfter(to)) {</span>
+<span class="fc" id="L143">            throw new BusinessRuleException(</span>
+                    &quot;La cuenta no estuvo abierta ningún día del mes consultado&quot;);
+        }
+<span class="fc" id="L146">        BigDecimal total = BigDecimal.ZERO;</span>
+<span class="fc" id="L147">        int days = 0;</span>
+<span class="fc bfc" id="L148" title="All 2 branches covered.">        for (LocalDate day = from; !day.isAfter(to); day = day.plusDays(1)) {</span>
+<span class="fc" id="L149">            total = total.add(balance(movementsBalanceUntil(day, movements)));</span>
+<span class="fc" id="L150">            days++;</span>
+        }
+<span class="fc" id="L152">        BigDecimal average = total.divide(BigDecimal.valueOf(days), 2, RoundingMode.HALF_UP);</span>
+<span class="fc" id="L153">        return new DailyAverageBalance(month, days, average, minimumDailyAverage);</span>
+    }
+
+    /**
+     * Calcula las comisiones mensuales de la cuenta por un mes ya terminado.
+     *
+     * &lt;ul&gt;
+     *   &lt;li&gt;{@link MovementType#MAINTENANCE_FEE}: la comisión de mantenimiento, si la cuenta la
+     *       tiene (cuenta corriente que no es PYME).
+     *   &lt;li&gt;{@link MovementType#MINIMUM_AVERAGE_FEE}: {@code minimumAverageFee}, si la cuenta exige
+     *       un promedio diario mínimo (ahorro VIP) y el promedio del mes no lo alcanzó.
+     * &lt;/ul&gt;
+     *
+     * &lt;p&gt;Las comisiones llevan como fecha el primer día del mes siguiente. Nunca dejan el saldo
+     * negativo: si el saldo no alcanza, se cobra solo lo que haya y, si es 0, no se cobra. No se
+     * cobra nada si la cuenta se abrió después del mes.
+     *
+     * @param month             mes terminado que se cobra
+     * @param movements         todos los movimientos de la cuenta hasta hoy
+     * @param minimumAverageFee comisión por no alcanzar el promedio diario mínimo
+     * @return las comisiones a guardar (vacío si no corresponde ninguna)
+     */
+    public List&lt;Movement&gt; monthlyCharges(
+            YearMonth month,
+            List&lt;Movement&gt; movements,
+            BigDecimal minimumAverageFee) {
+<span class="fc bfc" id="L179" title="All 2 branches covered.">        if (openedAt.isAfter(month.atEndOfMonth())) {</span>
+<span class="fc" id="L180">            return List.of();</span>
+        }
+<span class="fc" id="L182">        LocalDate chargeDate = month.plusMonths(1).atDay(1);</span>
+<span class="fc" id="L183">        Map&lt;MovementType, BigDecimal&gt; fees = new EnumMap&lt;&gt;(MovementType.class);</span>
+<span class="fc" id="L184">        fees.put(MovementType.MAINTENANCE_FEE, maintenanceFee);</span>
+<span class="fc bfc" id="L185" title="All 2 branches covered.">        if (belowMinimumAverage(month, movements)) {</span>
+<span class="fc" id="L186">            fees.put(MovementType.MINIMUM_AVERAGE_FEE, minimumAverageFee);</span>
+        }
+<span class="fc" id="L188">        BigDecimal available = balance(movements.stream()</span>
+<span class="fc" id="L189">                .map(Movement::balanceEffect)</span>
+<span class="fc" id="L190">                .reduce(BigDecimal.ZERO, BigDecimal::add)).max(BigDecimal.ZERO);</span>
+<span class="fc" id="L191">        List&lt;Movement&gt; charges = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L192" title="All 2 branches covered.">        for (Map.Entry&lt;MovementType, BigDecimal&gt; fee : fees.entrySet()) {</span>
+<span class="fc" id="L193">            BigDecimal amount = fee.getValue().min(available);</span>
+<span class="fc bfc" id="L194" title="All 2 branches covered.">            if (amount.signum() &gt; 0) {</span>
+<span class="fc" id="L195">                charges.add(new Movement(id, fee.getKey(), amount, chargeDate));</span>
+<span class="fc" id="L196">                available = available.subtract(amount);</span>
+            }
+<span class="fc" id="L198">        }</span>
+<span class="fc" id="L199">        return List.copyOf(charges);</span>
+    }
+
+    private boolean belowMinimumAverage(YearMonth month, List&lt;Movement&gt; movements) {
+<span class="fc bfc" id="L203" title="All 2 branches covered.">        return minimumDailyAverage != null</span>
+<span class="fc bfc" id="L204" title="All 2 branches covered.">                &amp;&amp; Boolean.FALSE.equals(dailyAverageBalance(month, month.atEndOfMonth(), movements)</span>
+<span class="fc" id="L205">                        .meetsMinimum());</span>
+    }
+
+    private static BigDecimal movementsBalanceUntil(LocalDate day, List&lt;Movement&gt; movements) {
+<span class="fc" id="L209">        return movements.stream()</span>
+<span class="fc bfc" id="L210" title="All 2 branches covered.">                .filter(movement -&gt; !movement.date().isAfter(day))</span>
+<span class="fc" id="L211">                .map(Movement::balanceEffect)</span>
+<span class="fc" id="L212">                .reduce(BigDecimal.ZERO, BigDecimal::add);</span>
+    }
+
+    private static LocalDate later(LocalDate first, LocalDate second) {
+<span class="fc bfc" id="L216" title="All 2 branches covered.">        return first.isAfter(second) ? first : second;</span>
+    }
+
+    private static LocalDate earlier(LocalDate first, LocalDate second) {
+<span class="fc bfc" id="L220" title="All 2 branches covered.">        return first.isBefore(second) ? first : second;</span>
+    }
+
+    private static void validateSufficientFunds(Movement movement, BigDecimal balance) {
+<span class="fc bfc" id="L224" title="All 2 branches covered.">        if (balance.add(movement.balanceEffect()).signum() &gt;= 0) {</span>
+<span class="fc" id="L225">            return;</span>
+        }
+<span class="fc" id="L227">        throw new BusinessRuleException(</span>
+<span class="pc bpc" id="L228" title="1 of 6 branches missed.">                switch (movement.type()) {</span>
+<span class="fc" id="L229">                    case WITHDRAWAL -&gt; &quot;Saldo insuficiente para el retiro y su comisión&quot;;</span>
+<span class="fc" id="L230">                    case TRANSFER_OUT -&gt; &quot;Saldo insuficiente para la transferencia y su comisión&quot;;</span>
+                    case DEBIT_CARD_PAYMENT -&gt;
+<span class="fc" id="L232">                            &quot;Saldo insuficiente para el pago con tarjeta y su comisión&quot;;</span>
+                    case YANKI_PAYMENT_SENT -&gt;
+<span class="fc" id="L234">                            &quot;Saldo insuficiente para el pago Yanki y su comisión&quot;;</span>
+                    case MAINTENANCE_FEE, MINIMUM_AVERAGE_FEE -&gt;
+<span class="nc" id="L236">                            &quot;Saldo insuficiente para la comisión mensual&quot;;</span>
+                    case DEPOSIT, TRANSFER_IN, YANKI_PAYMENT_RECEIVED, YANKI_PAYMENT_REVERSAL -&gt;
+<span class="fc" id="L238">                            &quot;Saldo insuficiente para la comisión del depósito&quot;;</span>
+                });
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SavingsAccount.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">account-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.accountservice.domain.model.account</a> &gt; <span class="el_source">SavingsAccount.java</span></div><h1>SavingsAccount.java</h1><pre class="source lang-java linenums">package dev.bootcamp.accountservice.domain.model.account;
+
+import dev.bootcamp.accountservice.domain.exception.BusinessRuleException;
+import dev.bootcamp.accountservice.domain.model.customer.Customer;
+import dev.bootcamp.accountservice.domain.model.customer.CustomerType;
+import lombok.Getter;
+
+/**
+ * Ahorro: sin comisión de mantenimiento, con límite máximo de movimientos mensuales. El límite se
+ * valida en transaction-service.
+ */
+@Getter
+public class SavingsAccount extends BankAccount {
+    private final int maxMonthlyMovements;
+
+    /**
+     * Crea una cuenta de ahorro validando sus reglas.
+     *
+     * @throws BusinessRuleException si el cliente es empresarial o el límite no es mayor a 0
+     */
+    public SavingsAccount(
+            Customer customer,
+            OpeningAmount opening,
+            int maxMonthlyMovements) {
+<span class="fc" id="L25">        super(customer, opening);</span>
+<span class="fc bfc" id="L26" title="All 2 branches covered.">        if (customer.type() == CustomerType.BUSINESS) {</span>
+<span class="fc" id="L27">            throw new BusinessRuleException(</span>
+                    &quot;Un cliente empresarial no puede tener una cuenta de ahorro&quot;);
+        }
+<span class="fc bfc" id="L30" title="All 2 branches covered.">        if (maxMonthlyMovements &lt;= 0) {</span>
+<span class="fc" id="L31">            throw new BusinessRuleException(</span>
+                    &quot;El límite de movimientos mensuales debe ser mayor a 0&quot;);
+        }
+<span class="fc" id="L34">        this.maxMonthlyMovements = maxMonthlyMovements;</span>
+<span class="fc" id="L35">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

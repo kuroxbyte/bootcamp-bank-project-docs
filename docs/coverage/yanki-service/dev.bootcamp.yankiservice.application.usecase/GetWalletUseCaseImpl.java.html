@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GetWalletUseCaseImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">yanki-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.yankiservice.application.usecase</a> &gt; <span class="el_source">GetWalletUseCaseImpl.java</span></div><h1>GetWalletUseCaseImpl.java</h1><pre class="source lang-java linenums">package dev.bootcamp.yankiservice.application.usecase;
+
+import dev.bootcamp.yankiservice.application.port.DebitCardLinkRepository;
+import dev.bootcamp.yankiservice.application.port.WalletRepository;
+import dev.bootcamp.yankiservice.application.port.YankiPaymentRepository;
+import dev.bootcamp.yankiservice.domain.exception.NotFoundException;
+import dev.bootcamp.yankiservice.domain.model.link.DebitCardLink;
+import dev.bootcamp.yankiservice.domain.model.payment.YankiPayment;
+import dev.bootcamp.yankiservice.domain.model.wallet.Wallet;
+import io.reactivex.rxjava3.core.Flowable;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+
+/**
+ * Implementación de {@link GetWalletUseCase}.
+ */
+@RequiredArgsConstructor
+public class GetWalletUseCaseImpl implements GetWalletUseCase {
+    private final WalletRepository walletRepository;
+    private final YankiPaymentRepository paymentRepository;
+    private final DebitCardLinkRepository linkRepository;
+
+    @Override
+    public Single&lt;Wallet&gt; findWallet(String walletId) {
+<span class="fc" id="L25">        return walletRepository.findById(walletId)</span>
+<span class="fc" id="L26">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(&quot;El monedero no existe&quot;)));</span>
+    }
+
+    @Override
+    public Flowable&lt;YankiPayment&gt; findPayments(String walletId) {
+<span class="fc" id="L31">        return paymentRepository.findByWalletId(walletId);</span>
+    }
+
+    @Override
+    public Single&lt;YankiPayment&gt; findPayment(String walletId, String paymentId) {
+<span class="fc" id="L36">        return paymentRepository.findById(paymentId)</span>
+<span class="fc bfc" id="L37" title="All 2 branches covered.">                .filter(payment -&gt; payment.getSourceWalletId().equals(walletId)</span>
+<span class="fc bfc" id="L38" title="All 2 branches covered.">                        || payment.getTargetWalletId().equals(walletId))</span>
+<span class="fc" id="L39">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(</span>
+                        &quot;El pago no existe o no es del monedero&quot;)));
+    }
+
+    @Override
+    public Flowable&lt;DebitCardLink&gt; findDebitCardLinks(String walletId) {
+<span class="fc" id="L45">        return linkRepository.findByWalletId(walletId);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Wallet.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">yanki-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.yankiservice.domain.model.wallet</a> &gt; <span class="el_source">Wallet.java</span></div><h1>Wallet.java</h1><pre class="source lang-java linenums">package dev.bootcamp.yankiservice.domain.model.wallet;
+
+import dev.bootcamp.yankiservice.domain.exception.BusinessRuleException;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.regex.Pattern;
+
+/**
+ * Monedero móvil Yanki. No hace falta ser cliente del banco: basta un documento de identidad, un
+ * celular, el IMEI del celular y un correo. El celular identifica al monedero para enviar y recibir
+ * pagos.
+ *
+ * &lt;p&gt;Sin tarjeta de débito, el monedero tiene su propio saldo. Con tarjeta, los pagos se cargan y
+ * abonan en la cuenta principal de la tarjeta y el monedero no guarda saldo.
+ */
+@Getter
+public class Wallet {
+<span class="fc" id="L21">    private static final Pattern PHONE = Pattern.compile(&quot;9\\d{8}&quot;);</span>
+<span class="fc" id="L22">    private static final Pattern IMEI = Pattern.compile(&quot;\\d{15}&quot;);</span>
+<span class="fc" id="L23">    private static final Pattern EMAIL = Pattern.compile(&quot;[^@\\s]+@[^@\\s]+\\.[^@\\s]+&quot;);</span>
+
+    @Setter private String id;
+    private final DocumentType documentType;
+    private final String documentNumber;
+    private final String phone;
+    private final String imei;
+    private final String email;
+    @Setter private BigDecimal balance;
+    @Setter private String debitCardId;
+    @Setter private WalletStatus status;
+    @Setter private LocalDate createdAt;
+
+    /**
+     * Crea un monedero activo, sin tarjeta y con saldo 0, validando sus datos.
+     *
+     * @throws BusinessRuleException si algún dato no tiene el formato esperado
+     */
+    public Wallet(
+            DocumentType documentType,
+            String documentNumber,
+            String phone,
+            String imei,
+<span class="fc" id="L46">            String email) {</span>
+<span class="fc bfc" id="L47" title="All 4 branches covered.">        if (documentType == null || !documentType.accepts(documentNumber)) {</span>
+<span class="fc" id="L48">            throw new BusinessRuleException(</span>
+                    &quot;El número de documento no tiene el formato de &quot; + documentType);
+        }
+<span class="fc bfc" id="L51" title="All 4 branches covered.">        if (phone == null || !PHONE.matcher(phone).matches()) {</span>
+<span class="fc" id="L52">            throw new BusinessRuleException(</span>
+                    &quot;El celular debe tener 9 dígitos y empezar con 9&quot;);
+        }
+<span class="fc bfc" id="L55" title="All 6 branches covered.">        if (imei == null || !IMEI.matcher(imei).matches() || !luhn(imei)) {</span>
+<span class="fc" id="L56">            throw new BusinessRuleException(&quot;El IMEI no es válido&quot;);</span>
+        }
+<span class="fc bfc" id="L58" title="All 4 branches covered.">        if (email == null || !EMAIL.matcher(email).matches()) {</span>
+<span class="fc" id="L59">            throw new BusinessRuleException(&quot;El correo no es válido&quot;);</span>
+        }
+<span class="fc" id="L61">        this.documentType = documentType;</span>
+<span class="fc" id="L62">        this.documentNumber = documentNumber;</span>
+<span class="fc" id="L63">        this.phone = phone;</span>
+<span class="fc" id="L64">        this.imei = imei;</span>
+<span class="fc" id="L65">        this.email = email;</span>
+<span class="fc" id="L66">        this.balance = BigDecimal.ZERO;</span>
+<span class="fc" id="L67">        this.status = WalletStatus.ACTIVE;</span>
+<span class="fc" id="L68">    }</span>
+
+    /**
+     * Indica si el monedero tiene asociada una tarjeta de débito.
+     */
+    public boolean hasDebitCard() {
+<span class="fc bfc" id="L74" title="All 2 branches covered.">        return debitCardId != null;</span>
+    }
+
+    // Dígito de control de Luhn, el que usa el IMEI.
+    private static boolean luhn(String digits) {
+<span class="fc" id="L79">        int sum = 0;</span>
+<span class="fc bfc" id="L80" title="All 2 branches covered.">        for (int i = 0; i &lt; digits.length(); i++) {</span>
+<span class="fc" id="L81">            int digit = digits.charAt(digits.length() - 1 - i) - '0';</span>
+<span class="fc bfc" id="L82" title="All 2 branches covered.">            if (i % 2 == 1) {</span>
+<span class="fc" id="L83">                digit *= 2;</span>
+<span class="fc bfc" id="L84" title="All 2 branches covered.">                if (digit &gt; 9) {</span>
+<span class="fc" id="L85">                    digit -= 9;</span>
+                }
+            }
+<span class="fc" id="L88">            sum += digit;</span>
+        }
+<span class="fc bfc" id="L90" title="All 2 branches covered.">        return sum % 10 == 0;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

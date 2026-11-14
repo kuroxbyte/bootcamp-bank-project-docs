@@ -65,6 +65,15 @@ responde 503.
 En Docker, config-server lee los archivos de `config-repo` montados en solo lectura (perfil
 `native`). Al ejecutarlo localmente, los lee desde el repositorio git (rama `main`).
 
+## Pruebas y cobertura
+
+Cada microservicio ejecuta sus pruebas unitarias, Checkstyle y JaCoCo con `./mvnw verify`. El reporte
+de cobertura de todos está en [`docs/coverage`](docs/coverage/README.md); se regenera con:
+
+```bash
+scripts/coverage-report.sh
+```
+
 ## Autenticación con JWT
 
 1. Crear el cliente: `POST /api/v1/customers` (público).

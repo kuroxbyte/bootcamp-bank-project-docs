@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ProcessYankiOperationUseCaseImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.application.usecase</a> &gt; <span class="el_source">ProcessYankiOperationUseCaseImpl.java</span></div><h1>ProcessYankiOperationUseCaseImpl.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.application.usecase;
+
+import dev.bootcamp.transactionservice.application.port.AccountClient;
+import dev.bootcamp.transactionservice.application.port.MovementRepository;
+import dev.bootcamp.transactionservice.application.port.YankiOperationRepository;
+import dev.bootcamp.transactionservice.application.port.YankiOperationResultPublisher;
+import dev.bootcamp.transactionservice.domain.exception.BusinessRuleException;
+import dev.bootcamp.transactionservice.domain.exception.NotFoundException;
+import dev.bootcamp.transactionservice.domain.model.movement.Movement;
+import dev.bootcamp.transactionservice.domain.model.movement.MovementType;
+import dev.bootcamp.transactionservice.domain.model.yanki.YankiOperation;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.YearMonth;
+
+/**
+ * Implementación de {@link ProcessYankiOperationUseCase}.
+ */
+@RequiredArgsConstructor
+public class ProcessYankiOperationUseCaseImpl implements ProcessYankiOperationUseCase {
+    private final MovementRepository movementRepository;
+    private final AccountClient accountClient;
+    private final YankiOperationRepository operationRepository;
+    private final YankiOperationResultPublisher resultPublisher;
+
+    @Override
+    public Completable execute(
+            String operationId,
+            boolean debit,
+            String accountId,
+            BigDecimal amount,
+            LocalDate date,
+            boolean reversal) {
+<span class="fc" id="L38">        Single&lt;YankiOperation&gt; processed = Single.defer(() -&gt; apply(</span>
+                        operationId,
+                        debit,
+                        accountId,
+                        amount,
+                        date,
+                        reversal))
+<span class="fc" id="L45">                .flatMap(operation -&gt; operationRepository.save(operation)</span>
+<span class="fc" id="L46">                        .andThen(Single.just(operation)));</span>
+<span class="fc" id="L47">        return operationRepository.findById(operationId)</span>
+<span class="fc" id="L48">                .switchIfEmpty(processed)</span>
+<span class="fc" id="L49">                .flatMapCompletable(resultPublisher::publish);</span>
+    }
+
+    private Single&lt;YankiOperation&gt; apply(
+            String operationId,
+            boolean debit,
+            String accountId,
+            BigDecimal amount,
+            LocalDate date,
+            boolean reversal) {
+        Single&lt;Movement&gt; registered;
+<span class="fc bfc" id="L60" title="All 2 branches covered.">        if (reversal) {</span>
+<span class="fc" id="L61">            registered = Single.fromCallable(() -&gt; new Movement(</span>
+                            accountId,
+                            MovementType.YANKI_PAYMENT_REVERSAL,
+                            amount,
+                            date))
+<span class="fc" id="L66">                    .flatMap(movementRepository::save);</span>
+        } else {
+<span class="fc bfc" id="L68" title="All 2 branches covered.">            MovementType type = debit</span>
+<span class="fc" id="L69">                    ? MovementType.YANKI_PAYMENT_SENT</span>
+<span class="fc" id="L70">                    : MovementType.YANKI_PAYMENT_RECEIVED;</span>
+<span class="fc" id="L71">            registered = Single.fromCallable(() -&gt; new Movement(accountId, type, amount, date))</span>
+<span class="fc" id="L72">                    .flatMap(this::register);</span>
+        }
+<span class="fc" id="L74">        return registered</span>
+<span class="fc" id="L75">                .map(movement -&gt; YankiOperation.completed(operationId))</span>
+<span class="fc" id="L76">                .onErrorResumeNext(error -&gt;</span>
+<span class="fc bfc" id="L77" title="All 4 branches covered.">                        error instanceof BusinessRuleException || error instanceof NotFoundException</span>
+<span class="fc" id="L78">                                ? Single.just(YankiOperation.rejected(</span>
+                                        operationId,
+<span class="fc" id="L80">                                        error.getMessage()))</span>
+<span class="fc" id="L81">                                : Single.error(error));</span>
+    }
+
+    // Mismas reglas y comisión que un depósito o retiro del cliente.
+    private Single&lt;Movement&gt; register(Movement movement) {
+<span class="fc" id="L86">        return accountClient.findById(movement.accountId())</span>
+<span class="fc" id="L87">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(&quot;La cuenta no existe&quot;)))</span>
+<span class="fc" id="L88">                .flatMap(account -&gt; Single.zip(</span>
+<span class="fc" id="L89">                        movementRepository.countByAccountIdAndMonth(</span>
+<span class="fc" id="L90">                                movement.accountId(),</span>
+<span class="fc" id="L91">                                YearMonth.from(movement.date())),</span>
+<span class="fc" id="L92">                        movementRepository.getBalance(movement.accountId()),</span>
+<span class="fc" id="L93">                        (movementsInMonth, movementsBalance) -&gt; account.prepareMovement(</span>
+                                movement,
+<span class="fc" id="L95">                                movementsInMonth,</span>
+<span class="fc" id="L96">                                account.balance(movementsBalance))))</span>
+<span class="fc" id="L97">                .flatMap(movementRepository::save);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

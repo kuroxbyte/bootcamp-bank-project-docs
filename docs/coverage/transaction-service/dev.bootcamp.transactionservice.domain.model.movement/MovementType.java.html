@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MovementType.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.domain.model.movement</a> &gt; <span class="el_source">MovementType.java</span></div><h1>MovementType.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.domain.model.movement;
+
+/**
+ * Tipo de movimiento de una cuenta bancaria: depósito, retiro, transferencia, pago con tarjeta de
+ * débito, pago Yanki o comisión mensual.
+ */
+<span class="fc" id="L7">public enum MovementType {</span>
+    /**
+     * Depósito en la cuenta.
+     */
+<span class="fc" id="L11">    DEPOSIT,</span>
+    /**
+     * Retiro de la cuenta.
+     */
+<span class="fc" id="L15">    WITHDRAWAL,</span>
+    /**
+     * Transferencia recibida de otra cuenta del banco; se trata como un depósito.
+     */
+<span class="fc" id="L19">    TRANSFER_IN,</span>
+    /**
+     * Transferencia enviada a otra cuenta del banco; se trata como un retiro.
+     */
+<span class="fc" id="L23">    TRANSFER_OUT,</span>
+    /**
+     * Pago con tarjeta de débito desde la cuenta principal de la tarjeta; se trata como un retiro.
+     */
+<span class="fc" id="L27">    DEBIT_CARD_PAYMENT,</span>
+    /**
+     * Pago Yanki enviado desde la cuenta principal de la tarjeta del monedero; se trata como un
+     * retiro.
+     */
+<span class="fc" id="L32">    YANKI_PAYMENT_SENT,</span>
+    /**
+     * Pago Yanki recibido en la cuenta principal de la tarjeta del monedero (o el saldo del
+     * monedero transferido al asociar la tarjeta); se trata como un depósito.
+     */
+<span class="fc" id="L37">    YANKI_PAYMENT_RECEIVED,</span>
+    /**
+     * Devolución de un pago Yanki enviado que no llegó a su destino; suma al saldo sin reglas ni
+     * comisión.
+     */
+<span class="fc" id="L42">    YANKI_PAYMENT_REVERSAL,</span>
+    /**
+     * Comisión de mantenimiento mensual de una cuenta corriente; resta del saldo.
+     */
+<span class="fc" id="L46">    MAINTENANCE_FEE,</span>
+    /**
+     * Comisión mensual de una cuenta de ahorro VIP cuyo promedio diario del mes no alcanzó el
+     * mínimo exigido; resta del saldo.
+     */
+<span class="fc" id="L51">    MINIMUM_AVERAGE_FEE;</span>
+
+    /**
+     * Indica si el movimiento suma al saldo (depósito, transferencia o pago Yanki recibido, o
+     * devolución de un pago Yanki).
+     */
+    public boolean addsToBalance() {
+<span class="fc bfc" id="L58" title="All 8 branches covered.">        return this == DEPOSIT</span>
+                || this == TRANSFER_IN
+                || this == YANKI_PAYMENT_RECEIVED
+                || this == YANKI_PAYMENT_REVERSAL;
+    }
+
+    /**
+     * Indica si el movimiento es una transacción del cliente. Las devoluciones de pagos Yanki y
+     * las comisiones mensuales las registra el banco: no cuentan para el límite de movimientos, el
+     * día único del plazo fijo ni las transacciones sin comisión.
+     */
+    public boolean isCustomerTransaction() {
+<span class="fc bfc" id="L70" title="All 6 branches covered.">        return this != YANKI_PAYMENT_REVERSAL</span>
+                &amp;&amp; this != MAINTENANCE_FEE
+                &amp;&amp; this != MINIMUM_AVERAGE_FEE;
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

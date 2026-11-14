@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CachedDebitCardRepository.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">yanki-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.yankiservice.infrastructure.cache</a> &gt; <span class="el_source">CachedDebitCardRepository.java</span></div><h1>CachedDebitCardRepository.java</h1><pre class="source lang-java linenums">package dev.bootcamp.yankiservice.infrastructure.cache;
+
+import dev.bootcamp.yankiservice.application.port.DebitCardRepository;
+import dev.bootcamp.yankiservice.domain.model.debitcard.DebitCard;
+import dev.bootcamp.yankiservice.infrastructure.persistence.DebitCardDocument;
+import dev.bootcamp.yankiservice.infrastructure.persistence.DebitCardMongoRepository;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Maybe;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
+import org.springframework.stereotype.Component;
+import reactor.core.publisher.Mono;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.time.Duration;
+
+/**
+ * Implementa el puerto {@link DebitCardRepository} con MongoDB como almacén y Redis como caché
+ * (cache-aside).
+ *
+ * &lt;ul&gt;
+ *   &lt;li&gt;Guardar: escribe en MongoDB y después en Redis ({@code debit-card:{id}}).
+ *   &lt;li&gt;Buscar: lee de Redis; si no está, lee de MongoDB y lo deja en Redis.
+ *   &lt;li&gt;Cada entrada vence según {@code cache.debit-cards.ttl}.
+ *   &lt;li&gt;Si Redis falla, se registra y se sigue con MongoDB: la caché solo acelera el acceso.
+ * &lt;/ul&gt;
+ */
+<span class="fc" id="L29">@Slf4j</span>
+@Component
+public class CachedDebitCardRepository implements DebitCardRepository {
+
+    private static final String KEY_PREFIX = &quot;debit-card:&quot;;
+
+    private final DebitCardMongoRepository mongoRepository;
+    private final ReactiveStringRedisTemplate redisTemplate;
+    private final JsonMapper jsonMapper;
+    private final Duration ttl;
+
+    /**
+     * Crea el repositorio con el tiempo de vida configurado para la caché.
+     */
+    public CachedDebitCardRepository(
+            DebitCardMongoRepository mongoRepository,
+            ReactiveStringRedisTemplate redisTemplate,
+            JsonMapper jsonMapper,
+<span class="fc" id="L47">            @Value(&quot;${cache.debit-cards.ttl}&quot;) Duration ttl) {</span>
+<span class="fc" id="L48">        this.mongoRepository = mongoRepository;</span>
+<span class="fc" id="L49">        this.redisTemplate = redisTemplate;</span>
+<span class="fc" id="L50">        this.jsonMapper = jsonMapper;</span>
+<span class="fc" id="L51">        this.ttl = ttl;</span>
+<span class="fc" id="L52">    }</span>
+
+    @Override
+    public Completable save(DebitCard debitCard) {
+<span class="fc" id="L56">        return Completable.fromPublisher(mongoRepository</span>
+<span class="fc" id="L57">                .save(new DebitCardDocument(</span>
+<span class="fc" id="L58">                        debitCard.id(),</span>
+<span class="fc" id="L59">                        debitCard.customerId(),</span>
+<span class="fc" id="L60">                        debitCard.primaryAccountId()))</span>
+<span class="fc" id="L61">                .then(cache(debitCard)));</span>
+    }
+
+    @Override
+    public Maybe&lt;DebitCard&gt; findById(String debitCardId) {
+<span class="fc" id="L66">        Mono&lt;DebitCard&gt; fromDatabase = mongoRepository.findById(debitCardId)</span>
+<span class="fc" id="L67">                .map(document -&gt; new DebitCard(</span>
+<span class="fc" id="L68">                        document.getId(),</span>
+<span class="fc" id="L69">                        document.getCustomerId(),</span>
+<span class="fc" id="L70">                        document.getPrimaryAccountId()))</span>
+<span class="fc" id="L71">                .flatMap(card -&gt; cache(card).thenReturn(card));</span>
+<span class="fc" id="L72">        return Maybe.fromPublisher(cached(debitCardId).switchIfEmpty(fromDatabase));</span>
+    }
+
+    private Mono&lt;DebitCard&gt; cached(String debitCardId) {
+<span class="fc" id="L76">        return redisTemplate.opsForValue()</span>
+<span class="fc" id="L77">                .get(KEY_PREFIX + debitCardId)</span>
+<span class="fc" id="L78">                .map(json -&gt; jsonMapper.readValue(json, DebitCard.class))</span>
+<span class="fc" id="L79">                .onErrorResume(error -&gt; {</span>
+<span class="fc" id="L80">                    log.warn(&quot;Redis read failed debitCardId={}&quot;, debitCardId, error);</span>
+<span class="fc" id="L81">                    return Mono.empty();</span>
+                });
+    }
+
+    private Mono&lt;Void&gt; cache(DebitCard debitCard) {
+<span class="fc" id="L86">        return redisTemplate.opsForValue()</span>
+<span class="fc" id="L87">                .set(KEY_PREFIX + debitCard.id(), jsonMapper.writeValueAsString(debitCard), ttl)</span>
+<span class="fc" id="L88">                .then()</span>
+<span class="fc" id="L89">                .onErrorResume(error -&gt; {</span>
+<span class="fc" id="L90">                    log.warn(&quot;Redis write failed debitCardId={}&quot;, debitCard.id(), error);</span>
+<span class="fc" id="L91">                    return Mono.empty();</span>
+                });
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

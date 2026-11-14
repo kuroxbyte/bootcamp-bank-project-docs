@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DailyDebtEvaluation.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">debt-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.debtservice.infrastructure.scheduling</a> &gt; <span class="el_source">DailyDebtEvaluation.java</span></div><h1>DailyDebtEvaluation.java</h1><pre class="source lang-java linenums">package dev.bootcamp.debtservice.infrastructure.scheduling;
+
+import dev.bootcamp.debtservice.application.usecase.EvaluateDebtUseCase;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+/**
+ * Revisión diaria de la deuda de todos los clientes: una deuda vence al pasar su fecha, sin que
+ * llegue ningún evento. El horario se configura con {@code debt.evaluation.cron}.
+ */
+<span class="fc" id="L13">@Slf4j</span>
+@Component
+@RequiredArgsConstructor
+public class DailyDebtEvaluation {
+
+    private final EvaluateDebtUseCase evaluateDebtUseCase;
+
+    /**
+     * Evalúa la deuda de todos los clientes con productos de crédito.
+     */
+    @Scheduled(cron = &quot;${debt.evaluation.cron}&quot;)
+    public void evaluateAllCustomers() {
+<span class="fc" id="L25">        log.info(&quot;Daily debt evaluation started&quot;);</span>
+<span class="fc" id="L26">        evaluateDebtUseCase.evaluateAll()</span>
+<span class="fc" id="L27">                .doOnComplete(() -&gt; log.info(&quot;Daily debt evaluation finished&quot;))</span>
+<span class="fc" id="L28">                .onErrorComplete(error -&gt; {</span>
+<span class="fc" id="L29">                    log.error(&quot;Daily debt evaluation finished with errors&quot;, error);</span>
+<span class="fc" id="L30">                    return true;</span>
+                })
+<span class="fc" id="L32">                .blockingAwait();</span>
+<span class="fc" id="L33">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BankAccountPersistenceAdapter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">account-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.accountservice.infrastructure.persistence</a> &gt; <span class="el_source">BankAccountPersistenceAdapter.java</span></div><h1>BankAccountPersistenceAdapter.java</h1><pre class="source lang-java linenums">package dev.bootcamp.accountservice.infrastructure.persistence;
+
+import dev.bootcamp.accountservice.application.port.BankAccountRepository;
+import dev.bootcamp.accountservice.domain.model.account.BankAccount;
+import io.reactivex.rxjava3.core.Flowable;
+import io.reactivex.rxjava3.core.Maybe;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+/**
+ * Implementa el puerto {@link BankAccountRepository} con MongoDB reactivo.
+ */
+<span class="fc" id="L15">@Slf4j</span>
+@Component
+@RequiredArgsConstructor
+public class BankAccountPersistenceAdapter implements BankAccountRepository {
+
+    private final BankAccountMongoRepository mongoRepository;
+
+    @Override
+    public Maybe&lt;BankAccount&gt; findById(String accountId) {
+<span class="fc" id="L24">        return Maybe.fromPublisher(mongoRepository.findById(accountId))</span>
+<span class="fc" id="L25">                .map(BankAccountPersistenceMapper::toDomain);</span>
+    }
+
+    @Override
+    public Flowable&lt;BankAccount&gt; findByCustomerId(String customerId) {
+<span class="fc" id="L30">        return Flowable.fromPublisher(mongoRepository.findByCustomerId(customerId))</span>
+<span class="fc" id="L31">                .map(BankAccountPersistenceMapper::toDomain);</span>
+    }
+
+    @Override
+    public Flowable&lt;BankAccount&gt; findAll() {
+<span class="fc" id="L36">        return Flowable.fromPublisher(mongoRepository.findAll())</span>
+<span class="fc" id="L37">                .map(BankAccountPersistenceMapper::toDomain);</span>
+    }
+
+    @Override
+    public &lt;T extends BankAccount&gt; Single&lt;T&gt; save(T account) {
+<span class="fc" id="L42">        return Single.fromPublisher(</span>
+<span class="fc" id="L43">                        mongoRepository.save(BankAccountPersistenceMapper.toDocument(account)))</span>
+<span class="fc" id="L44">                .map(</span>
+                        saved -&gt; {
+<span class="fc" id="L46">                            account.setId(saved.getId());</span>
+<span class="fc" id="L47">                            log.debug(&quot;Account saved accountId={}&quot;, saved.getId());</span>
+<span class="fc" id="L48">                            return account;</span>
+                        });
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

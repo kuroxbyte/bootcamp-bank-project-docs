@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DebtMovement.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">debt-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.debtservice.domain.model</a> &gt; <span class="el_source">DebtMovement.java</span></div><h1>DebtMovement.java</h1><pre class="source lang-java linenums">package dev.bootcamp.debtservice.domain.model;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+/**
+ * Pago o consumo de un producto de crédito, conocido por un evento de transaction-service.
+ *
+ * @param eventId    id del evento; evita contar dos veces un evento repetido
+ * @param customerId cliente dueño del producto
+ * @param productId  id del crédito o de la tarjeta
+ * @param type       pago a crédito, pago a tarjeta o consumo
+ * @param amount     monto
+ * @param date       fecha del pago o consumo
+ */
+<span class="fc" id="L16">public record DebtMovement(</span>
+        String eventId,
+        String customerId,
+        String productId,
+        DebtMovementType type,
+        BigDecimal amount,
+        LocalDate date) {}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

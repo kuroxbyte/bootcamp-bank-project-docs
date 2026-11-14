@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PayCreditUseCaseImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.application.usecase</a> &gt; <span class="el_source">PayCreditUseCaseImpl.java</span></div><h1>PayCreditUseCaseImpl.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.application.usecase;
+
+import dev.bootcamp.transactionservice.application.port.CreditClient;
+import dev.bootcamp.transactionservice.application.port.PaymentRepository;
+import dev.bootcamp.transactionservice.application.port.TransactionEventPublisher;
+import dev.bootcamp.transactionservice.domain.exception.BusinessRuleException;
+import dev.bootcamp.transactionservice.domain.exception.NotFoundException;
+import dev.bootcamp.transactionservice.domain.model.credit.Credit;
+import dev.bootcamp.transactionservice.domain.model.payment.Payment;
+import dev.bootcamp.transactionservice.domain.model.payment.PaymentTarget;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+/**
+ * Implementación de {@link PayCreditUseCase}.
+ */
+@RequiredArgsConstructor
+public class PayCreditUseCaseImpl implements PayCreditUseCase {
+    private final PaymentRepository paymentRepository;
+    private final CreditClient creditClient;
+    private final TransactionEventPublisher transactionEventPublisher;
+
+    @Override
+    public Single&lt;Payment&gt; pay(
+            String customerId,
+            String creditId,
+            BigDecimal amount,
+            LocalDate date) {
+<span class="fc" id="L32">        return register(customerId, creditId, amount, date, true);</span>
+    }
+
+    @Override
+    public Single&lt;Payment&gt; payThirdParty(
+            String customerId,
+            String creditId,
+            BigDecimal amount,
+            LocalDate date) {
+<span class="fc" id="L41">        return register(customerId, creditId, amount, date, false);</span>
+    }
+
+    private Single&lt;Payment&gt; register(
+            String customerId,
+            String creditId,
+            BigDecimal amount,
+            LocalDate date,
+            boolean ownCredit) {
+<span class="fc" id="L50">        return Single.fromCallable(() -&gt;</span>
+<span class="fc" id="L51">                        new Payment(PaymentTarget.CREDIT, creditId, amount, date, customerId))</span>
+<span class="fc" id="L52">                .flatMap(payment -&gt; creditClient</span>
+<span class="fc" id="L53">                        .findById(creditId)</span>
+<span class="fc" id="L54">                        .switchIfEmpty(Single.error(</span>
+<span class="fc" id="L55">                                () -&gt; new NotFoundException(&quot;El crédito no existe&quot;)))</span>
+<span class="fc" id="L56">                        .map(credit -&gt; ensureOwnership(credit, customerId, ownCredit))</span>
+<span class="fc" id="L57">                        .flatMap(credit -&gt; paymentRepository.save(payment)</span>
+<span class="fc" id="L58">                                .flatMap(saved -&gt; transactionEventPublisher</span>
+<span class="fc" id="L59">                                        .publishPaymentRegistered(credit.customerId(), saved)</span>
+<span class="fc" id="L60">                                        .andThen(Single.just(saved)))));</span>
+    }
+
+    private static Credit ensureOwnership(Credit credit, String customerId, boolean ownCredit) {
+<span class="fc bfc" id="L64" title="All 4 branches covered.">        if (ownCredit &amp;&amp; !credit.belongsTo(customerId)) {</span>
+<span class="fc" id="L65">            throw new NotFoundException(&quot;El crédito no pertenece al cliente&quot;);</span>
+        }
+<span class="fc bfc" id="L67" title="All 4 branches covered.">        if (!ownCredit &amp;&amp; credit.belongsTo(customerId)) {</span>
+<span class="fc" id="L68">            throw new BusinessRuleException(</span>
+                    &quot;El crédito es del cliente; use el pago de sus propios créditos&quot;);
+        }
+<span class="fc" id="L71">        return credit;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

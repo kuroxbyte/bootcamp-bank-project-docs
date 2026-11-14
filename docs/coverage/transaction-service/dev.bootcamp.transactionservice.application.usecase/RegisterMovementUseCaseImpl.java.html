@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RegisterMovementUseCaseImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.application.usecase</a> &gt; <span class="el_source">RegisterMovementUseCaseImpl.java</span></div><h1>RegisterMovementUseCaseImpl.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.application.usecase;
+
+import dev.bootcamp.transactionservice.application.port.AccountClient;
+import dev.bootcamp.transactionservice.application.port.DebitCardRepository;
+import dev.bootcamp.transactionservice.application.port.MovementRepository;
+import dev.bootcamp.transactionservice.domain.exception.NotFoundException;
+import dev.bootcamp.transactionservice.domain.model.account.Account;
+import dev.bootcamp.transactionservice.domain.model.movement.Movement;
+import dev.bootcamp.transactionservice.domain.model.movement.MovementType;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.YearMonth;
+
+/**
+ * Implementación de {@link RegisterMovementUseCase}.
+ */
+@RequiredArgsConstructor
+public class RegisterMovementUseCaseImpl implements RegisterMovementUseCase {
+    private final MovementRepository movementRepository;
+    private final AccountClient accountClient;
+    private final DebitCardRepository debitCardRepository;
+
+    @Override
+    public Single&lt;Movement&gt; payWithDebitCard(
+            String customerId,
+            String debitCardId,
+            BigDecimal amount,
+            LocalDate date) {
+<span class="fc" id="L32">        return debitCardRepository.findById(debitCardId)</span>
+<span class="fc" id="L33">                .filter(card -&gt; card.belongsTo(customerId))</span>
+<span class="fc" id="L34">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(</span>
+                        &quot;La tarjeta de débito no existe o no pertenece al cliente&quot;)))
+<span class="fc" id="L36">                .map(card -&gt; Movement.debitCardPayment(</span>
+<span class="fc" id="L37">                        card.primaryAccountId(),</span>
+                        debitCardId,
+                        amount,
+                        date))
+<span class="fc" id="L41">                .flatMap(movement -&gt; register(customerId, movement));</span>
+    }
+
+    @Override
+    public Single&lt;Movement&gt; deposit(
+            String customerId,
+            String accountId,
+            BigDecimal amount,
+            LocalDate date) {
+<span class="fc" id="L50">        return Single.fromCallable(</span>
+<span class="fc" id="L51">                        () -&gt; new Movement(accountId, MovementType.DEPOSIT, amount, date))</span>
+<span class="fc" id="L52">                .flatMap(movement -&gt; register(customerId, movement));</span>
+    }
+
+    @Override
+    public Single&lt;Movement&gt; withdraw(
+            String customerId,
+            String accountId,
+            BigDecimal amount,
+            LocalDate date) {
+<span class="fc" id="L61">        return Single.fromCallable(</span>
+<span class="fc" id="L62">                        () -&gt; new Movement(accountId, MovementType.WITHDRAWAL, amount, date))</span>
+<span class="fc" id="L63">                .flatMap(movement -&gt; register(customerId, movement));</span>
+    }
+
+    private Single&lt;Movement&gt; register(String customerId, Movement movement) {
+<span class="fc" id="L67">        return accountClient</span>
+<span class="fc" id="L68">                .findById(movement.accountId())</span>
+<span class="fc" id="L69">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(&quot;La cuenta no existe&quot;)))</span>
+<span class="fc" id="L70">                .map(account -&gt; ensureBelongsTo(account, customerId))</span>
+<span class="fc" id="L71">                .flatMap(</span>
+                        account -&gt;
+<span class="fc" id="L73">                                Single.zip(</span>
+<span class="fc" id="L74">                                        movementRepository.countByAccountIdAndMonth(</span>
+<span class="fc" id="L75">                                                movement.accountId(),</span>
+<span class="fc" id="L76">                                                YearMonth.from(movement.date())),</span>
+<span class="fc" id="L77">                                        movementRepository.getBalance(movement.accountId()),</span>
+                                        (movementsInMonth, movementsBalance) -&gt;
+<span class="fc" id="L79">                                                account.prepareMovement(</span>
+                                                        movement,
+<span class="fc" id="L81">                                                        movementsInMonth,</span>
+<span class="fc" id="L82">                                                        account.balance(movementsBalance))))</span>
+<span class="fc" id="L83">                .flatMap(movementRepository::save);</span>
+    }
+
+    private static Account ensureBelongsTo(Account account, String customerId) {
+<span class="fc bfc" id="L87" title="All 2 branches covered.">        if (!account.belongsTo(customerId)) {</span>
+<span class="fc" id="L88">            throw new NotFoundException(&quot;La cuenta no pertenece al cliente&quot;);</span>
+        }
+<span class="fc" id="L90">        return account;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

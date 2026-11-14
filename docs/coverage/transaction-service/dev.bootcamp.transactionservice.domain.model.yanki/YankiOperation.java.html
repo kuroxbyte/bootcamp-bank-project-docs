@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>YankiOperation.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.domain.model.yanki</a> &gt; <span class="el_source">YankiOperation.java</span></div><h1>YankiOperation.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.domain.model.yanki;
+
+/**
+ * Resultado de un cargo o abono que yanki-service pidió sobre una cuenta bancaria. Se guarda para
+ * responder lo mismo si el pedido llega otra vez.
+ *
+ * @param operationId id de la operación en yanki-service
+ * @param completed   true si se registró el movimiento
+ * @param reason      motivo del rechazo (null si se completó)
+ */
+<span class="fc" id="L11">public record YankiOperation(String operationId, boolean completed, String reason) {</span>
+
+    /**
+     * Operación completada.
+     */
+    public static YankiOperation completed(String operationId) {
+<span class="fc" id="L17">        return new YankiOperation(operationId, true, null);</span>
+    }
+
+    /**
+     * Operación rechazada con su motivo.
+     */
+    public static YankiOperation rejected(String operationId, String reason) {
+<span class="fc" id="L24">        return new YankiOperation(operationId, false, reason);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

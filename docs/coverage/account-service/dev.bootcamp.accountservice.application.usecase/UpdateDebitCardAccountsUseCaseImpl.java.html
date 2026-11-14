@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UpdateDebitCardAccountsUseCaseImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">account-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.accountservice.application.usecase</a> &gt; <span class="el_source">UpdateDebitCardAccountsUseCaseImpl.java</span></div><h1>UpdateDebitCardAccountsUseCaseImpl.java</h1><pre class="source lang-java linenums">package dev.bootcamp.accountservice.application.usecase;
+
+import dev.bootcamp.accountservice.application.port.DebitCardEventPublisher;
+import dev.bootcamp.accountservice.application.port.DebitCardRepository;
+import dev.bootcamp.accountservice.application.rule.DebitCardAccountRule;
+import dev.bootcamp.accountservice.domain.model.debitcard.DebitCard;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+
+/**
+ * Implementación de {@link UpdateDebitCardAccountsUseCase}.
+ */
+@RequiredArgsConstructor
+public class UpdateDebitCardAccountsUseCaseImpl implements UpdateDebitCardAccountsUseCase {
+    private final DebitCardRepository debitCardRepository;
+    private final DebitCardAccountRule debitCardAccountRule;
+    private final DebitCardEventPublisher debitCardEventPublisher;
+
+    @Override
+    public Single&lt;DebitCard&gt; associateAccount(
+            String customerId,
+            String debitCardId,
+            String accountId) {
+<span class="fc" id="L24">        return GetDebitCardsUseCaseImpl</span>
+<span class="fc" id="L25">                .findOwnedCard(debitCardRepository, customerId, debitCardId)</span>
+<span class="fc" id="L26">                .flatMap(card -&gt; debitCardAccountRule.verify(customerId, accountId)</span>
+<span class="fc" id="L27">                        .andThen(Single.fromCallable(() -&gt; {</span>
+<span class="fc" id="L28">                            card.associateAccount(accountId);</span>
+<span class="fc" id="L29">                            return card;</span>
+                        })))
+<span class="fc" id="L31">                .flatMap(this::saveAndPublish);</span>
+    }
+
+    @Override
+    public Single&lt;DebitCard&gt; changePrimaryAccount(
+            String customerId,
+            String debitCardId,
+            String accountId) {
+<span class="fc" id="L39">        return GetDebitCardsUseCaseImpl</span>
+<span class="fc" id="L40">                .findOwnedCard(debitCardRepository, customerId, debitCardId)</span>
+<span class="fc" id="L41">                .map(card -&gt; {</span>
+<span class="fc" id="L42">                    card.changePrimaryAccount(accountId);</span>
+<span class="fc" id="L43">                    return card;</span>
+                })
+<span class="fc" id="L45">                .flatMap(this::saveAndPublish);</span>
+    }
+
+    private Single&lt;DebitCard&gt; saveAndPublish(DebitCard card) {
+<span class="fc" id="L49">        return debitCardRepository.save(card)</span>
+<span class="fc" id="L50">                .flatMap(saved -&gt; debitCardEventPublisher.publishAccountsUpdated(saved)</span>
+<span class="fc" id="L51">                        .andThen(Single.just(saved)));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

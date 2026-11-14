@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CheckingAccount.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">account-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.accountservice.domain.model.account</a> &gt; <span class="el_source">CheckingAccount.java</span></div><h1>CheckingAccount.java</h1><pre class="source lang-java linenums">package dev.bootcamp.accountservice.domain.model.account;
+
+import dev.bootcamp.accountservice.domain.exception.BusinessRuleException;
+import dev.bootcamp.accountservice.domain.model.customer.Customer;
+import dev.bootcamp.accountservice.domain.model.customer.CustomerProfile;
+import dev.bootcamp.accountservice.domain.model.customer.CustomerType;
+import lombok.Getter;
+
+import java.math.BigDecimal;
+import java.util.List;
+
+/**
+ * Cuenta corriente: con comisión de mantenimiento, sin límite de movimientos mensuales. Si es
+ * empresarial, tiene uno o más titulares y cero o más firmantes autorizados.
+ *
+ * &lt;p&gt;Si el cliente es PYME, la cuenta no tiene comisión de mantenimiento.
+ */
+@Getter
+public class CheckingAccount extends BankAccount {
+    private final BigDecimal maintenanceFee;
+    private final List&lt;String&gt; holderIds;
+    private final List&lt;String&gt; authorizedSignerIds;
+
+    /**
+     * Crea una cuenta corriente validando sus reglas.
+     *
+     * @param maintenanceFee comisión de mantenimiento; si el cliente es PYME puede omitirse y se
+     *     guarda 0
+     * @throws BusinessRuleException si no hay comisión de mantenimiento (o la hay y el cliente es
+     *     PYME), o la cuenta empresarial no tiene titulares
+     */
+    public CheckingAccount(
+            Customer customer,
+            OpeningAmount opening,
+            BigDecimal maintenanceFee,
+            List&lt;String&gt; holderIds,
+            List&lt;String&gt; authorizedSignerIds) {
+<span class="fc" id="L38">        super(customer, opening);</span>
+<span class="fc" id="L39">        this.maintenanceFee = validMaintenanceFee(customer, maintenanceFee);</span>
+<span class="fc bfc" id="L40" title="All 2 branches covered.">        this.holderIds = holderIds == null ? List.of() : List.copyOf(holderIds);</span>
+<span class="fc" id="L41">        this.authorizedSignerIds =</span>
+<span class="fc bfc" id="L42" title="All 2 branches covered.">                authorizedSignerIds == null ? List.of() : List.copyOf(authorizedSignerIds);</span>
+<span class="fc bfc" id="L43" title="All 4 branches covered.">        if (customer.type() == CustomerType.BUSINESS &amp;&amp; this.holderIds.isEmpty()) {</span>
+<span class="fc" id="L44">            throw new BusinessRuleException(</span>
+                    &quot;Una cuenta empresarial debe tener al menos un titular&quot;);
+        }
+<span class="fc" id="L47">    }</span>
+
+    private static BigDecimal validMaintenanceFee(Customer customer, BigDecimal maintenanceFee) {
+<span class="fc bfc" id="L50" title="All 2 branches covered.">        if (customer.profile() == CustomerProfile.PYME) {</span>
+<span class="fc bfc" id="L51" title="All 4 branches covered.">            if (maintenanceFee != null &amp;&amp; maintenanceFee.signum() != 0) {</span>
+<span class="fc" id="L52">                throw new BusinessRuleException(</span>
+                        &quot;La cuenta corriente PYME no tiene comisión de mantenimiento&quot;);
+            }
+<span class="fc" id="L55">            return BigDecimal.ZERO;</span>
+        }
+<span class="fc bfc" id="L57" title="All 4 branches covered.">        if (maintenanceFee == null || maintenanceFee.signum() &lt;= 0) {</span>
+<span class="fc" id="L58">            throw new BusinessRuleException(</span>
+                    &quot;La cuenta corriente debe tener comisión de mantenimiento&quot;);
+        }
+<span class="fc" id="L61">        return maintenanceFee;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

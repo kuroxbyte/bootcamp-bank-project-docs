@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GetProductMovementsUseCaseImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.application.usecase</a> &gt; <span class="el_source">GetProductMovementsUseCaseImpl.java</span></div><h1>GetProductMovementsUseCaseImpl.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.application.usecase;
+
+import dev.bootcamp.transactionservice.application.port.AccountClient;
+import dev.bootcamp.transactionservice.application.port.ChargeRepository;
+import dev.bootcamp.transactionservice.application.port.CreditCardClient;
+import dev.bootcamp.transactionservice.application.port.CreditClient;
+import dev.bootcamp.transactionservice.application.port.DebitCardRepository;
+import dev.bootcamp.transactionservice.application.port.MovementRepository;
+import dev.bootcamp.transactionservice.application.port.PaymentRepository;
+import dev.bootcamp.transactionservice.domain.exception.NotFoundException;
+import dev.bootcamp.transactionservice.domain.model.history.ProductMovement;
+import dev.bootcamp.transactionservice.domain.model.payment.PaymentTarget;
+import io.reactivex.rxjava3.core.Flowable;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+
+/**
+ * Implementación de {@link GetProductMovementsUseCase}.
+ */
+@RequiredArgsConstructor
+public class GetProductMovementsUseCaseImpl implements GetProductMovementsUseCase {
+    private static final String CREDIT_CARD_NOT_FOUND = &quot;La tarjeta de crédito no existe&quot;;
+    private static final String CREDIT_CARD_NOT_OWNED =
+            &quot;La tarjeta de crédito no pertenece al cliente&quot;;
+
+<span class="fc" id="L31">    private static final Comparator&lt;ProductMovement&gt; BY_DATE =</span>
+<span class="fc" id="L32">            Comparator.comparing(ProductMovement::date);</span>
+
+    private final AccountClient accountClient;
+    private final CreditClient creditClient;
+    private final CreditCardClient creditCardClient;
+    private final MovementRepository movementRepository;
+    private final PaymentRepository paymentRepository;
+    private final ChargeRepository chargeRepository;
+    private final DebitCardRepository debitCardRepository;
+
+    @Override
+    public Flowable&lt;ProductMovement&gt; getAccountMovements(String customerId, String accountId) {
+<span class="fc" id="L44">        return accountClient</span>
+<span class="fc" id="L45">                .findById(accountId)</span>
+<span class="fc" id="L46">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(&quot;La cuenta no existe&quot;)))</span>
+<span class="fc" id="L47">                .flatMapPublisher(</span>
+                        account -&gt;
+<span class="fc bfc" id="L49" title="All 2 branches covered.">                                account.belongsTo(customerId)</span>
+                                        ? movementRepository
+<span class="fc" id="L51">                                                .findByAccountId(accountId)</span>
+<span class="fc" id="L52">                                                .map(ProductMovement::from)</span>
+<span class="fc" id="L53">                                                .sorted(BY_DATE)</span>
+<span class="fc" id="L54">                                        : Flowable.error(</span>
+                                                new NotFoundException(
+                                                        &quot;La cuenta no pertenece al cliente&quot;)));
+    }
+
+    @Override
+    public Flowable&lt;ProductMovement&gt; getCreditMovements(String customerId, String creditId) {
+<span class="fc" id="L61">        return creditClient</span>
+<span class="fc" id="L62">                .findById(creditId)</span>
+<span class="pc" id="L63">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(&quot;El crédito no existe&quot;)))</span>
+<span class="fc" id="L64">                .flatMapPublisher(</span>
+                        credit -&gt;
+<span class="fc bfc" id="L66" title="All 2 branches covered.">                                credit.belongsTo(customerId)</span>
+                                        ? paymentRepository
+<span class="fc" id="L68">                                                .findByTargetAndProductId(</span>
+                                                        PaymentTarget.CREDIT, creditId)
+<span class="fc" id="L70">                                                .map(ProductMovement::from)</span>
+<span class="fc" id="L71">                                                .sorted(BY_DATE)</span>
+<span class="fc" id="L72">                                        : Flowable.error(</span>
+                                                new NotFoundException(
+                                                        &quot;El crédito no pertenece al cliente&quot;)));
+    }
+
+    @Override
+    public Flowable&lt;ProductMovement&gt; getCreditCardMovements(
+            String customerId,
+            String creditCardId) {
+<span class="fc" id="L81">        return creditCardClient</span>
+<span class="fc" id="L82">                .findById(creditCardId)</span>
+<span class="pc" id="L83">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(CREDIT_CARD_NOT_FOUND)))</span>
+<span class="fc" id="L84">                .flatMapPublisher(</span>
+                        creditCard -&gt;
+<span class="fc bfc" id="L86" title="All 2 branches covered.">                                creditCard.belongsTo(customerId)</span>
+<span class="fc" id="L87">                                        ? Flowable.merge(</span>
+                                                        chargeRepository
+<span class="fc" id="L89">                                                                .findByCreditCardId(creditCardId)</span>
+<span class="fc" id="L90">                                                                .map(ProductMovement::from),</span>
+                                                        paymentRepository
+<span class="fc" id="L92">                                                                .findByTargetAndProductId(</span>
+                                                                        PaymentTarget.CREDIT_CARD,
+                                                                        creditCardId)
+<span class="fc" id="L95">                                                                .map(ProductMovement::from))</span>
+<span class="fc" id="L96">                                                .sorted(BY_DATE)</span>
+<span class="fc" id="L97">                                        : Flowable.error(</span>
+                                                new NotFoundException(CREDIT_CARD_NOT_OWNED)));
+    }
+
+    @Override
+    public Flowable&lt;ProductMovement&gt; getCreditCardLastMovements(
+            String customerId,
+            String creditCardId) {
+<span class="fc" id="L105">        return getCreditCardMovements(customerId, creditCardId)</span>
+<span class="fc" id="L106">                .toList()</span>
+<span class="fc" id="L107">                .flatMapPublisher(movements -&gt; {</span>
+<span class="fc" id="L108">                    List&lt;ProductMovement&gt; newestFirst = new ArrayList&lt;&gt;(movements);</span>
+<span class="fc" id="L109">                    Collections.reverse(newestFirst);</span>
+<span class="fc" id="L110">                    return Flowable.fromIterable(newestFirst).take(LAST_MOVEMENTS);</span>
+                });
+    }
+
+    @Override
+    public Flowable&lt;ProductMovement&gt; getDebitCardLastMovements(
+            String customerId,
+            String debitCardId) {
+<span class="fc" id="L118">        return debitCardRepository.findById(debitCardId)</span>
+<span class="fc" id="L119">                .filter(card -&gt; card.belongsTo(customerId))</span>
+<span class="fc" id="L120">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(</span>
+                        &quot;La tarjeta de débito no existe o no pertenece al cliente&quot;)))
+<span class="fc" id="L122">                .flatMapPublisher(card -&gt; movementRepository.findByDebitCardId(debitCardId)</span>
+<span class="fc" id="L123">                        .map(ProductMovement::from)</span>
+<span class="fc" id="L124">                        .sorted(BY_DATE.reversed())</span>
+<span class="fc" id="L125">                        .take(LAST_MOVEMENTS));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>
