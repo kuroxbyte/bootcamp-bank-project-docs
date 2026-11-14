@@ -87,6 +87,12 @@ scripts/coverage-report.sh
    401, y con un rol que no permite la ruta, 403. El gateway descarta cualquier `X-Customer-Id` o
    `X-Wallet-Id` que mande el cliente y envía a los servicios el del token.
 
+Los empleados del banco obtienen un token con rol `ADMIN` en `POST /api/v1/auth/admin-login`. El
+usuario y el cifrado BCrypt de su contraseña están en config-repo (`auth.admin`); en desarrollo son
+`admin` / `Admin2026!` y en otro entorno se reemplazan con `ADMIN_USERNAME` y `ADMIN_PASSWORD_HASH`.
+El gateway envía a los servicios `X-Admin-Id` con el usuario del empleado (y descarta el que mande el
+cliente).
+
 Los dueños de un monedero Yanki obtienen su token con `POST /api/v1/auth/wallet-users` (celular y
 contraseña) y `POST /api/v1/auth/wallet-login`: `sub` es el id del monedero y `roles` es
 `["WALLET"]`. Ese token solo sirve para `/api/v1/yanki/**`; el de cliente, para las demás rutas.
@@ -151,6 +157,37 @@ público); hay uno por celular. Los pagos se envían con solo el celular del des
 - yanki-service no llama a la API REST de otros servicios: conoce las tarjetas por
   `debit-card-events` (copia en MongoDB con caché en Redis) y publica `WalletCreated` en
   `yanki-events` para que auth-service registre el acceso del monedero.
+
+## Administración y bajas (CRUD)
+
+Cada entidad de negocio tiene Create, FindAll, Update y Delete. Las bajas son lógicas: el registro
+guarda su fecha de baja (o el estado `CLOSED` en un monedero), deja de listarse, responde 404 y ya no
+acepta operaciones; su historial de movimientos se conserva.
+
+| Entidad | Listar | Modificar (`PUT`) | Dar de baja (`DELETE`) |
+|---|---|---|---|
+| Cliente | `GET /api/v1/customers` (ADMIN) | ADMIN: nombre y perfil; el cliente: solo su nombre | ADMIN, sin cuentas, créditos ni tarjetas activos |
+| Cuenta | `GET /api/v1/accounts` (cliente) | ADMIN: condiciones de su tipo (mantenimiento, titulares y firmantes; límite de movimientos y promedio VIP; día del plazo fijo) | ADMIN, con saldo 0 y sin tarjeta de débito |
+| Tarjeta de débito | `GET /api/v1/debit-cards` (cliente) | El cliente: asociar cuentas y cambiar la principal | ADMIN; sus cuentas quedan libres |
+| Crédito | `GET /api/v1/credits` (cliente) | ADMIN: fecha de vencimiento | ADMIN, pagado por completo |
+| Tarjeta de crédito | `GET /api/v1/credit-cards` (cliente) | ADMIN: límite (no menor que la deuda) y día de pago | ADMIN, sin deuda |
+| Monedero Yanki | `GET /api/v1/yanki/wallet` (dueño) | El dueño: IMEI y correo | El dueño, sin pagos pendientes y con saldo propio 0 |
+
+Para verificar las reglas, customer-service consulta los productos del cliente en account-service y
+credit-service, y account-service y credit-service consultan el saldo o la deuda en
+transaction-service (REST con circuit breaker; 503 si no responden). Las bajas y modificaciones se
+publican en Kafka (`CustomerUpdated`, `CustomerClosed`, `CreditUpdated`, `CreditCardUpdated`,
+`CreditClosed`, `CreditCardClosed`, `DebitCardClosed` y `WalletClosed`): auth-service elimina el
+acceso de clientes y monederos dados de baja, debt-service recalcula la deuda con las nuevas fechas,
+y transaction-service y yanki-service dejan de usar la tarjeta de débito dada de baja (el monedero
+que la tenía vuelve a usar su propio saldo).
+
+Una cuenta, crédito o tarjeta dado de baja no cuenta para los límites por cliente (por ejemplo, una
+sola cuenta de ahorro personal). El celular de un monedero dado de baja no se puede reutilizar.
+
+En una base de datos de account-service creada antes de este cambio, el índice único de
+`debit_cards.accountIds` pasa a ser disperso (`sparse`): hay que borrar el índice anterior
+(`db.debit_cards.dropIndex("accountIds")`) o recrear el volumen (`docker compose down -v`).
 
 ## Comisiones mensuales
 

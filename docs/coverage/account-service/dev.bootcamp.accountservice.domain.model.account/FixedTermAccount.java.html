@@ -5,6 +5,8 @@ import dev.bootcamp.accountservice.domain.model.customer.Customer;
 import dev.bootcamp.accountservice.domain.model.customer.CustomerType;
 import lombok.Getter;
 
+import java.util.Set;
+
 /**
  * Plazo fijo: sin comisión de mantenimiento, un solo movimiento en un día específico del mes. El
  * movimiento se valida en transaction-service.
@@ -22,15 +24,24 @@ public class FixedTermAccount extends BankAccount {
             Customer customer,
             OpeningAmount opening,
             int movementDayOfMonth) {
-<span class="fc" id="L25">        super(customer, opening);</span>
-<span class="fc bfc" id="L26" title="All 2 branches covered.">        if (customer.type() == CustomerType.BUSINESS) {</span>
-<span class="fc" id="L27">            throw new BusinessRuleException(</span>
+<span class="fc" id="L27">        super(customer, opening);</span>
+<span class="fc bfc" id="L28" title="All 2 branches covered.">        if (customer.type() == CustomerType.BUSINESS) {</span>
+<span class="fc" id="L29">            throw new BusinessRuleException(</span>
                     &quot;Un cliente empresarial no puede tener una cuenta a plazo fijo&quot;);
         }
-<span class="fc bfc" id="L30" title="All 4 branches covered.">        if (movementDayOfMonth &lt; 1 || movementDayOfMonth &gt; 31) {</span>
-<span class="fc" id="L31">            throw new BusinessRuleException(&quot;El día de movimiento debe estar entre 1 y 31&quot;);</span>
+<span class="fc bfc" id="L32" title="All 4 branches covered.">        if (movementDayOfMonth &lt; 1 || movementDayOfMonth &gt; 31) {</span>
+<span class="fc" id="L33">            throw new BusinessRuleException(&quot;El día de movimiento debe estar entre 1 y 31&quot;);</span>
         }
-<span class="fc" id="L33">        this.movementDayOfMonth = movementDayOfMonth;</span>
-<span class="fc" id="L34">    }</span>
+<span class="fc" id="L35">        this.movementDayOfMonth = movementDayOfMonth;</span>
+<span class="fc" id="L36">    }</span>
+
+    @Override
+    public FixedTermAccount withChanges(AccountChanges changes) {
+<span class="fc" id="L40">        changes.allowOnly(&quot;a plazo fijo&quot;, Set.of(&quot;movementDayOfMonth&quot;));</span>
+<span class="fc" id="L41">        return keepStateIn(new FixedTermAccount(</span>
+<span class="fc" id="L42">                getCustomer(),</span>
+<span class="fc" id="L43">                getOpening(),</span>
+<span class="fc" id="L44">                AccountChanges.required(changes.movementDayOfMonth(), &quot;movementDayOfMonth&quot;)));</span>
+    }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

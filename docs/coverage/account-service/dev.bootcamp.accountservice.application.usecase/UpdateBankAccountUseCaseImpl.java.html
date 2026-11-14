@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UpdateBankAccountUseCaseImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">account-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.accountservice.application.usecase</a> &gt; <span class="el_source">UpdateBankAccountUseCaseImpl.java</span></div><h1>UpdateBankAccountUseCaseImpl.java</h1><pre class="source lang-java linenums">package dev.bootcamp.accountservice.application.usecase;
+
+import dev.bootcamp.accountservice.application.port.AccountBalanceClient;
+import dev.bootcamp.accountservice.application.port.BankAccountRepository;
+import dev.bootcamp.accountservice.application.port.DebitCardRepository;
+import dev.bootcamp.accountservice.domain.exception.BusinessRuleException;
+import dev.bootcamp.accountservice.domain.model.account.AccountChanges;
+import dev.bootcamp.accountservice.domain.model.account.BankAccount;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+
+import java.time.Clock;
+import java.time.LocalDate;
+
+/**
+ * Implementación de {@link UpdateBankAccountUseCase}.
+ */
+@RequiredArgsConstructor
+public class UpdateBankAccountUseCaseImpl implements UpdateBankAccountUseCase {
+    private final BankAccountRepository bankAccountRepository;
+    private final DebitCardRepository debitCardRepository;
+    private final AccountBalanceClient accountBalanceClient;
+    private final Clock clock;
+
+    @Override
+    public Single&lt;BankAccount&gt; update(String accountId, AccountChanges changes) {
+<span class="fc" id="L28">        return GetBankAccountsUseCaseImpl.findActive(bankAccountRepository, accountId)</span>
+<span class="fc" id="L29">                .map(account -&gt; account.withChanges(changes))</span>
+<span class="fc" id="L30">                .flatMap(bankAccountRepository::save);</span>
+    }
+
+    @Override
+    public Completable close(String accountId) {
+<span class="fc" id="L35">        return GetBankAccountsUseCaseImpl.findActive(bankAccountRepository, accountId)</span>
+<span class="fc" id="L36">                .flatMap(account -&gt; debitCardRepository.existsByAccountId(accountId)</span>
+<span class="fc bfc" id="L37" title="All 2 branches covered.">                        .flatMap(onCard -&gt; onCard</span>
+<span class="fc" id="L38">                                ? Single.&lt;BankAccount&gt;error(new BusinessRuleException(</span>
+                                        &quot;La cuenta está asociada a una tarjeta de débito; primero&quot;
+                                                + &quot; debe darse de baja la tarjeta&quot;))
+<span class="fc" id="L41">                                : Single.just(account)))</span>
+<span class="fc" id="L42">                .flatMap(account -&gt; accountBalanceClient</span>
+<span class="fc" id="L43">                        .balance(accountId, account.getCustomer().id())</span>
+<span class="fc bfc" id="L44" title="All 2 branches covered.">                        .flatMap(balance -&gt; balance.signum() != 0</span>
+<span class="fc" id="L45">                                ? Single.&lt;BankAccount&gt;error(new BusinessRuleException(</span>
+<span class="fc" id="L46">                                        &quot;La cuenta tiene saldo &quot; + balance.toPlainString()</span>
+                                                + &quot;; debe quedar en 0 para darla de baja&quot;))
+<span class="fc" id="L48">                                : Single.just(account)))</span>
+<span class="fc" id="L49">                .flatMap(account -&gt; {</span>
+<span class="fc" id="L50">                    account.close(LocalDate.now(clock));</span>
+<span class="fc" id="L51">                    return bankAccountRepository.save(account);</span>
+                })
+<span class="fc" id="L53">                .ignoreElement();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

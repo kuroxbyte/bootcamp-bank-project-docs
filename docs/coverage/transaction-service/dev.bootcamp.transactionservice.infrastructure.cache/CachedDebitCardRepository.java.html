@@ -72,23 +72,34 @@ public class CachedDebitCardRepository implements DebitCardRepository {
 <span class="fc" id="L72">        return Maybe.fromPublisher(cached(debitCardId).switchIfEmpty(fromDatabase));</span>
     }
 
-    private Mono&lt;DebitCard&gt; cached(String debitCardId) {
-<span class="fc" id="L76">        return redisTemplate.opsForValue()</span>
-<span class="fc" id="L77">                .get(KEY_PREFIX + debitCardId)</span>
-<span class="fc" id="L78">                .map(json -&gt; jsonMapper.readValue(json, DebitCard.class))</span>
+    @Override
+    public Completable deleteById(String debitCardId) {
+<span class="fc" id="L77">        Mono&lt;Void&gt; evict = redisTemplate.delete(KEY_PREFIX + debitCardId)</span>
+<span class="fc" id="L78">                .then()</span>
 <span class="fc" id="L79">                .onErrorResume(error -&gt; {</span>
-<span class="fc" id="L80">                    log.warn(&quot;Redis read failed debitCardId={}&quot;, debitCardId, error);</span>
+<span class="fc" id="L80">                    log.warn(&quot;Redis delete failed debitCardId={}&quot;, debitCardId, error);</span>
 <span class="fc" id="L81">                    return Mono.empty();</span>
+                });
+<span class="fc" id="L83">        return Completable.fromPublisher(mongoRepository.deleteById(debitCardId).then(evict));</span>
+    }
+
+    private Mono&lt;DebitCard&gt; cached(String debitCardId) {
+<span class="fc" id="L87">        return redisTemplate.opsForValue()</span>
+<span class="fc" id="L88">                .get(KEY_PREFIX + debitCardId)</span>
+<span class="fc" id="L89">                .map(json -&gt; jsonMapper.readValue(json, DebitCard.class))</span>
+<span class="fc" id="L90">                .onErrorResume(error -&gt; {</span>
+<span class="fc" id="L91">                    log.warn(&quot;Redis read failed debitCardId={}&quot;, debitCardId, error);</span>
+<span class="fc" id="L92">                    return Mono.empty();</span>
                 });
     }
 
     private Mono&lt;Void&gt; cache(DebitCard debitCard) {
-<span class="fc" id="L86">        return redisTemplate.opsForValue()</span>
-<span class="fc" id="L87">                .set(KEY_PREFIX + debitCard.id(), jsonMapper.writeValueAsString(debitCard), ttl)</span>
-<span class="fc" id="L88">                .then()</span>
-<span class="fc" id="L89">                .onErrorResume(error -&gt; {</span>
-<span class="fc" id="L90">                    log.warn(&quot;Redis write failed debitCardId={}&quot;, debitCard.id(), error);</span>
-<span class="fc" id="L91">                    return Mono.empty();</span>
+<span class="fc" id="L97">        return redisTemplate.opsForValue()</span>
+<span class="fc" id="L98">                .set(KEY_PREFIX + debitCard.id(), jsonMapper.writeValueAsString(debitCard), ttl)</span>
+<span class="fc" id="L99">                .then()</span>
+<span class="fc" id="L100">                .onErrorResume(error -&gt; {</span>
+<span class="fc" id="L101">                    log.warn(&quot;Redis write failed debitCardId={}&quot;, debitCard.id(), error);</span>
+<span class="fc" id="L102">                    return Mono.empty();</span>
                 });
     }
 }

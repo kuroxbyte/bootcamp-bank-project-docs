@@ -19,39 +19,46 @@ public class DebitCardPersistenceAdapter implements DebitCardRepository {
 
     @Override
     public Single&lt;DebitCard&gt; save(DebitCard debitCard) {
-<span class="fc" id="L22">        return Single.fromPublisher(mongoRepository.save(new DebitCardDocument(</span>
-<span class="fc" id="L23">                        debitCard.getId(),</span>
-<span class="fc" id="L24">                        debitCard.getCustomerId(),</span>
-<span class="fc" id="L25">                        debitCard.getPrimaryAccountId(),</span>
-<span class="fc" id="L26">                        debitCard.getAccountIds(),</span>
-<span class="fc" id="L27">                        debitCard.getIssuedAt())))</span>
-<span class="fc" id="L28">                .map(DebitCardPersistenceAdapter::toDomain);</span>
+<span class="fc" id="L22">        boolean closed = debitCard.isClosed();</span>
+<span class="fc" id="L23">        return Single.fromPublisher(mongoRepository.save(new DebitCardDocument(</span>
+<span class="fc" id="L24">                        debitCard.getId(),</span>
+<span class="fc" id="L25">                        debitCard.getCustomerId(),</span>
+<span class="fc" id="L26">                        debitCard.getPrimaryAccountId(),</span>
+<span class="fc bfc" id="L27" title="All 2 branches covered.">                        closed ? null : debitCard.getAccountIds(),</span>
+<span class="fc" id="L28">                        debitCard.getIssuedAt(),</span>
+<span class="fc" id="L29">                        debitCard.getClosedAt(),</span>
+<span class="fc bfc" id="L30" title="All 2 branches covered.">                        closed ? debitCard.getAccountIds() : null)))</span>
+<span class="fc" id="L31">                .map(DebitCardPersistenceAdapter::toDomain);</span>
     }
 
     @Override
     public Maybe&lt;DebitCard&gt; findById(String debitCardId) {
-<span class="fc" id="L33">        return Maybe.fromPublisher(mongoRepository.findById(debitCardId))</span>
-<span class="fc" id="L34">                .map(DebitCardPersistenceAdapter::toDomain);</span>
+<span class="fc" id="L36">        return Maybe.fromPublisher(mongoRepository.findById(debitCardId))</span>
+<span class="fc" id="L37">                .map(DebitCardPersistenceAdapter::toDomain);</span>
     }
 
     @Override
     public Flowable&lt;DebitCard&gt; findByCustomerId(String customerId) {
-<span class="fc" id="L39">        return Flowable.fromPublisher(mongoRepository.findByCustomerId(customerId))</span>
-<span class="fc" id="L40">                .map(DebitCardPersistenceAdapter::toDomain);</span>
+<span class="fc" id="L42">        return Flowable.fromPublisher(mongoRepository.findByCustomerIdAndClosedAtIsNull(customerId))</span>
+<span class="fc" id="L43">                .map(DebitCardPersistenceAdapter::toDomain);</span>
     }
 
     @Override
     public Single&lt;Boolean&gt; existsByAccountId(String accountId) {
-<span class="fc" id="L45">        return Single.fromPublisher(mongoRepository.existsByAccountIds(accountId));</span>
+<span class="fc" id="L48">        return Single.fromPublisher(mongoRepository.existsByAccountIds(accountId));</span>
     }
 
     private static DebitCard toDomain(DebitCardDocument document) {
-<span class="fc" id="L49">        return DebitCard.restore(</span>
-<span class="fc" id="L50">                document.getId(),</span>
-<span class="fc" id="L51">                document.getCustomerId(),</span>
-<span class="fc" id="L52">                document.getPrimaryAccountId(),</span>
-<span class="fc" id="L53">                document.getAccountIds(),</span>
-<span class="fc" id="L54">                document.getIssuedAt());</span>
+<span class="fc" id="L52">        DebitCard card = DebitCard.restore(</span>
+<span class="fc" id="L53">                document.getId(),</span>
+<span class="fc" id="L54">                document.getCustomerId(),</span>
+<span class="fc" id="L55">                document.getPrimaryAccountId(),</span>
+<span class="fc bfc" id="L56" title="All 2 branches covered.">                document.getClosedAt() == null</span>
+<span class="fc" id="L57">                        ? document.getAccountIds()</span>
+<span class="fc" id="L58">                        : document.getClosedAccountIds(),</span>
+<span class="fc" id="L59">                document.getIssuedAt());</span>
+<span class="fc" id="L60">        card.setClosedAt(document.getClosedAt());</span>
+<span class="fc" id="L61">        return card;</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

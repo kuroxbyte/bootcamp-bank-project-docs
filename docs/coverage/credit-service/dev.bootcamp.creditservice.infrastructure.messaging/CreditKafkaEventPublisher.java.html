@@ -22,11 +22,12 @@ import java.util.UUID;
  * La clave de cada mensaje es el id del cliente, para que sus eventos lleguen en orden. El
  * contrato está en {@code docs/events/asyncapi.yaml} del repositorio raíz.
  *
- * &lt;p&gt;Si Kafka no responde ({@code max.block.ms}, 1 s en config-repo), el error se registra y el
- * otorgamiento no falla: el evento se pierde (limitación conocida; evitarla requiere el patrón
- * outbox).
+ * &lt;p&gt;Publica el otorgamiento, la modificación y la baja de créditos y tarjetas, siempre con el
+ * estado completo del producto. Si Kafka no responde ({@code max.block.ms}, 1 s en config-repo),
+ * el error se registra y la operación no falla: el evento se pierde (limitación conocida;
+ * evitarla requiere el patrón outbox).
  */
-<span class="fc" id="L29">@Slf4j</span>
+<span class="fc" id="L30">@Slf4j</span>
 @Component
 public class CreditKafkaEventPublisher implements CreditEventPublisher {
 
@@ -42,61 +43,91 @@ public class CreditKafkaEventPublisher implements CreditEventPublisher {
             KafkaTemplate&lt;String, String&gt; kafkaTemplate,
             JsonMapper jsonMapper,
             Clock clock,
-<span class="fc" id="L45">            @Value(&quot;${messaging.topics.credit-events}&quot;) String topic) {</span>
-<span class="fc" id="L46">        this.kafkaTemplate = kafkaTemplate;</span>
-<span class="fc" id="L47">        this.jsonMapper = jsonMapper;</span>
-<span class="fc" id="L48">        this.clock = clock;</span>
-<span class="fc" id="L49">        this.topic = topic;</span>
-<span class="fc" id="L50">    }</span>
+<span class="fc" id="L46">            @Value(&quot;${messaging.topics.credit-events}&quot;) String topic) {</span>
+<span class="fc" id="L47">        this.kafkaTemplate = kafkaTemplate;</span>
+<span class="fc" id="L48">        this.jsonMapper = jsonMapper;</span>
+<span class="fc" id="L49">        this.clock = clock;</span>
+<span class="fc" id="L50">        this.topic = topic;</span>
+<span class="fc" id="L51">    }</span>
 
     @Override
     public Completable publishCreditGranted(Credit credit) {
-<span class="fc" id="L54">        Map&lt;String, Object&gt; event = new LinkedHashMap&lt;&gt;();</span>
-<span class="fc" id="L55">        event.put(&quot;eventType&quot;, &quot;CreditGranted&quot;);</span>
-<span class="fc" id="L56">        event.put(&quot;creditId&quot;, credit.getId());</span>
-<span class="fc" id="L57">        event.put(&quot;customerId&quot;, credit.getCustomer().id());</span>
-<span class="fc" id="L58">        event.put(&quot;creditType&quot;, credit.getType().name());</span>
-<span class="fc" id="L59">        event.put(&quot;amount&quot;, credit.getAmount());</span>
-<span class="fc" id="L60">        event.put(&quot;dueDate&quot;, credit.getDueDate().toString());</span>
-<span class="fc" id="L61">        event.put(&quot;grantedAt&quot;, credit.getGrantedAt().toString());</span>
-<span class="fc" id="L62">        return publish(credit.getCustomer().id(), event);</span>
+<span class="fc" id="L55">        return publishCredit(&quot;CreditGranted&quot;, credit);</span>
+    }
+
+    @Override
+    public Completable publishCreditUpdated(Credit credit) {
+<span class="fc" id="L60">        return publishCredit(&quot;CreditUpdated&quot;, credit);</span>
+    }
+
+    @Override
+    public Completable publishCreditClosed(Credit credit) {
+<span class="fc" id="L65">        return publishCredit(&quot;CreditClosed&quot;, credit);</span>
     }
 
     @Override
     public Completable publishCreditCardGranted(CreditCard creditCard) {
-<span class="fc" id="L67">        Map&lt;String, Object&gt; event = new LinkedHashMap&lt;&gt;();</span>
-<span class="fc" id="L68">        event.put(&quot;eventType&quot;, &quot;CreditCardGranted&quot;);</span>
-<span class="fc" id="L69">        event.put(&quot;creditCardId&quot;, creditCard.getId());</span>
-<span class="fc" id="L70">        event.put(&quot;customerId&quot;, creditCard.getCustomer().id());</span>
-<span class="fc" id="L71">        event.put(&quot;creditLimit&quot;, creditCard.getCreditLimit());</span>
-<span class="fc" id="L72">        event.put(&quot;paymentDueDay&quot;, creditCard.getPaymentDueDay());</span>
-<span class="fc" id="L73">        event.put(&quot;grantedAt&quot;, creditCard.getGrantedAt().toString());</span>
-<span class="fc" id="L74">        return publish(creditCard.getCustomer().id(), event);</span>
+<span class="fc" id="L70">        return publishCreditCard(&quot;CreditCardGranted&quot;, creditCard);</span>
+    }
+
+    @Override
+    public Completable publishCreditCardUpdated(CreditCard creditCard) {
+<span class="fc" id="L75">        return publishCreditCard(&quot;CreditCardUpdated&quot;, creditCard);</span>
+    }
+
+    @Override
+    public Completable publishCreditCardClosed(CreditCard creditCard) {
+<span class="fc" id="L80">        return publishCreditCard(&quot;CreditCardClosed&quot;, creditCard);</span>
+    }
+
+    // Evento con el estado completo del crédito.
+    private Completable publishCredit(String eventType, Credit credit) {
+<span class="fc" id="L85">        Map&lt;String, Object&gt; event = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L86">        event.put(&quot;eventType&quot;, eventType);</span>
+<span class="fc" id="L87">        event.put(&quot;creditId&quot;, credit.getId());</span>
+<span class="fc" id="L88">        event.put(&quot;customerId&quot;, credit.getCustomer().id());</span>
+<span class="fc" id="L89">        event.put(&quot;creditType&quot;, credit.getType().name());</span>
+<span class="fc" id="L90">        event.put(&quot;amount&quot;, credit.getAmount());</span>
+<span class="fc" id="L91">        event.put(&quot;dueDate&quot;, credit.getDueDate().toString());</span>
+<span class="fc" id="L92">        event.put(&quot;grantedAt&quot;, credit.getGrantedAt().toString());</span>
+<span class="fc" id="L93">        return publish(credit.getCustomer().id(), event);</span>
+    }
+
+    // Evento con el estado completo de la tarjeta.
+    private Completable publishCreditCard(String eventType, CreditCard creditCard) {
+<span class="fc" id="L98">        Map&lt;String, Object&gt; event = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L99">        event.put(&quot;eventType&quot;, eventType);</span>
+<span class="fc" id="L100">        event.put(&quot;creditCardId&quot;, creditCard.getId());</span>
+<span class="fc" id="L101">        event.put(&quot;customerId&quot;, creditCard.getCustomer().id());</span>
+<span class="fc" id="L102">        event.put(&quot;creditLimit&quot;, creditCard.getCreditLimit());</span>
+<span class="fc" id="L103">        event.put(&quot;paymentDueDay&quot;, creditCard.getPaymentDueDay());</span>
+<span class="fc" id="L104">        event.put(&quot;grantedAt&quot;, creditCard.getGrantedAt().toString());</span>
+<span class="fc" id="L105">        return publish(creditCard.getCustomer().id(), event);</span>
     }
 
     private Completable publish(String customerId, Map&lt;String, Object&gt; event) {
-<span class="fc" id="L78">        return Completable.defer(() -&gt; {</span>
+<span class="fc" id="L109">        return Completable.defer(() -&gt; {</span>
             // Id único: debt-service lo usa para no procesar dos veces el mismo evento.
-<span class="fc" id="L80">            event.put(&quot;eventId&quot;, UUID.randomUUID().toString());</span>
-<span class="fc" id="L81">            event.put(&quot;occurredAt&quot;, Instant.now(clock).toString());</span>
-<span class="fc" id="L82">            return Completable.fromCompletionStage(kafkaTemplate.send(</span>
+<span class="fc" id="L111">            event.put(&quot;eventId&quot;, UUID.randomUUID().toString());</span>
+<span class="fc" id="L112">            event.put(&quot;occurredAt&quot;, Instant.now(clock).toString());</span>
+<span class="fc" id="L113">            return Completable.fromCompletionStage(kafkaTemplate.send(</span>
                     topic,
                     customerId,
-<span class="fc" id="L85">                    jsonMapper.writeValueAsString(event)));</span>
+<span class="fc" id="L116">                    jsonMapper.writeValueAsString(event)));</span>
         })
                 // send() puede bloquear mientras busca al broker: fuera del hilo de eventos.
-<span class="fc" id="L88">                .subscribeOn(Schedulers.io())</span>
-<span class="fc" id="L89">                .doOnComplete(() -&gt; log.info(</span>
+<span class="fc" id="L119">                .subscribeOn(Schedulers.io())</span>
+<span class="fc" id="L120">                .doOnComplete(() -&gt; log.info(</span>
                         &quot;{} published customerId={}&quot;,
-<span class="fc" id="L91">                        event.get(&quot;eventType&quot;),</span>
+<span class="fc" id="L122">                        event.get(&quot;eventType&quot;),</span>
                         customerId))
-<span class="fc" id="L93">                .onErrorComplete(error -&gt; {</span>
-<span class="fc" id="L94">                    log.error(</span>
+<span class="fc" id="L124">                .onErrorComplete(error -&gt; {</span>
+<span class="fc" id="L125">                    log.error(</span>
                             &quot;{} could not be published customerId={}&quot;,
-<span class="fc" id="L96">                            event.get(&quot;eventType&quot;),</span>
+<span class="fc" id="L127">                            event.get(&quot;eventType&quot;),</span>
                             customerId,
                             error);
-<span class="fc" id="L99">                    return true;</span>
+<span class="fc" id="L130">                    return true;</span>
                 });
     }
 }

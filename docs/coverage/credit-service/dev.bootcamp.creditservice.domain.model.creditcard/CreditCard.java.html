@@ -29,6 +29,11 @@ public class CreditCard {
     @Setter private LocalDate grantedAt;
 
     /**
+     * Fecha de baja; null mientras el producto está activo.
+     */
+    @Setter private LocalDate closedAt;
+
+    /**
      * Crea la tarjeta validando su límite de crédito y su día de pago.
      *
      * @throws BusinessRuleException si el límite de crédito no es mayor a 0 o el día de pago no
@@ -37,17 +42,45 @@ public class CreditCard {
     public CreditCard(
             Customer customer,
             BigDecimal creditLimit,
-<span class="fc" id="L40">            int paymentDueDay) {</span>
-<span class="fc bfc" id="L41" title="All 4 branches covered.">        if (creditLimit == null || creditLimit.signum() &lt;= 0) {</span>
-<span class="fc" id="L42">            throw new BusinessRuleException(</span>
+<span class="fc" id="L45">            int paymentDueDay) {</span>
+<span class="fc bfc" id="L46" title="All 4 branches covered.">        if (creditLimit == null || creditLimit.signum() &lt;= 0) {</span>
+<span class="fc" id="L47">            throw new BusinessRuleException(</span>
                     &quot;La tarjeta de crédito debe tener un límite de crédito mayor a 0&quot;);
         }
-<span class="fc bfc" id="L45" title="All 4 branches covered.">        if (paymentDueDay &lt; 1 || paymentDueDay &gt; 28) {</span>
-<span class="fc" id="L46">            throw new BusinessRuleException(&quot;El día de pago debe estar entre 1 y 28&quot;);</span>
+<span class="fc bfc" id="L50" title="All 4 branches covered.">        if (paymentDueDay &lt; 1 || paymentDueDay &gt; 28) {</span>
+<span class="fc" id="L51">            throw new BusinessRuleException(&quot;El día de pago debe estar entre 1 y 28&quot;);</span>
         }
-<span class="fc" id="L48">        this.customer = customer;</span>
-<span class="fc" id="L49">        this.creditLimit = creditLimit;</span>
-<span class="fc" id="L50">        this.paymentDueDay = paymentDueDay;</span>
-<span class="fc" id="L51">    }</span>
+<span class="fc" id="L53">        this.customer = customer;</span>
+<span class="fc" id="L54">        this.creditLimit = creditLimit;</span>
+<span class="fc" id="L55">        this.paymentDueDay = paymentDueDay;</span>
+<span class="fc" id="L56">    }</span>
+
+    /**
+     * Indica si el producto fue dado de baja.
+     */
+    public boolean isClosed() {
+<span class="fc bfc" id="L62" title="All 2 branches covered.">        return closedAt != null;</span>
+    }
+
+    /**
+     * Da de baja el producto (baja lógica: conserva sus datos y su historial de pagos).
+     */
+    public void close(LocalDate today) {
+<span class="fc" id="L69">        this.closedAt = today;</span>
+<span class="fc" id="L70">    }</span>
+
+    /**
+     * Crea la misma tarjeta con otro límite de crédito y otro día de pago, validados como al
+     * otorgarla. Conserva el id y las fechas de otorgamiento y de baja.
+     *
+     * @throws BusinessRuleException si el límite no es mayor a 0 o el día no está entre 1 y 28
+     */
+    public CreditCard withTerms(BigDecimal newCreditLimit, int newPaymentDueDay) {
+<span class="fc" id="L79">        CreditCard updated = new CreditCard(customer, newCreditLimit, newPaymentDueDay);</span>
+<span class="fc" id="L80">        updated.setId(id);</span>
+<span class="fc" id="L81">        updated.setGrantedAt(grantedAt);</span>
+<span class="fc" id="L82">        updated.setClosedAt(closedAt);</span>
+<span class="fc" id="L83">        return updated;</span>
+    }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

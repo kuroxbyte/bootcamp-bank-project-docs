@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">auth-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.authservice.infrastructure.web.controller</a> &gt; <span class="el_source">AuthController.java</span></div><h1>AuthController.java</h1><pre class="source lang-java linenums">package dev.bootcamp.authservice.infrastructure.web.controller;
 
+import dev.bootcamp.authservice.application.usecase.AdminLoginUseCase;
 import dev.bootcamp.authservice.application.usecase.LoginUseCase;
 import dev.bootcamp.authservice.application.usecase.RegisterUserUseCase;
 import dev.bootcamp.authservice.application.usecase.RegisterWalletUserUseCase;
 import dev.bootcamp.authservice.application.usecase.WalletLoginUseCase;
 import dev.bootcamp.authservice.infrastructure.web.api.AuthApi;
+import dev.bootcamp.authservice.infrastructure.web.dto.AdminLoginRequestDto;
 import dev.bootcamp.authservice.infrastructure.web.dto.LoginRequestDto;
 import dev.bootcamp.authservice.infrastructure.web.dto.RegisterRequestDto;
 import dev.bootcamp.authservice.infrastructure.web.dto.RegisterResponseDto;
@@ -21,10 +23,10 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
 /**
- * Endpoints de registro e inicio de sesión de clientes y de monederos Yanki definidos en el
- * contrato OpenAPI.
+ * Endpoints de registro e inicio de sesión de clientes, de monederos Yanki y del administrador
+ * definidos en el contrato OpenAPI.
  */
-<span class="fc" id="L27">@Slf4j</span>
+<span class="fc" id="L29">@Slf4j</span>
 @RestController
 @RequiredArgsConstructor
 public class AuthController implements AuthApi {
@@ -35,61 +37,75 @@ public class AuthController implements AuthApi {
     private final LoginUseCase loginUseCase;
     private final RegisterWalletUserUseCase registerWalletUserUseCase;
     private final WalletLoginUseCase walletLoginUseCase;
+    private final AdminLoginUseCase adminLoginUseCase;
 
     @Override
     public Mono&lt;ResponseEntity&lt;RegisterResponseDto&gt;&gt; register(
             Mono&lt;RegisterRequestDto&gt; registerRequestDto,
             ServerWebExchange exchange) {
-<span class="fc" id="L43">        return registerRequestDto</span>
-<span class="fc" id="L44">                .flatMap(request -&gt; Mono.from(registerUserUseCase</span>
-<span class="fc" id="L45">                        .execute(</span>
-<span class="fc" id="L46">                                request.getCustomerId(),</span>
-<span class="fc" id="L47">                                request.getUsername(),</span>
-<span class="fc" id="L48">                                request.getPassword())</span>
-<span class="fc" id="L49">                        .toFlowable()))</span>
-<span class="fc" id="L50">                .doOnNext(user -&gt; log.info(</span>
+<span class="fc" id="L46">        return registerRequestDto</span>
+<span class="fc" id="L47">                .flatMap(request -&gt; Mono.from(registerUserUseCase</span>
+<span class="fc" id="L48">                        .execute(</span>
+<span class="fc" id="L49">                                request.getCustomerId(),</span>
+<span class="fc" id="L50">                                request.getUsername(),</span>
+<span class="fc" id="L51">                                request.getPassword())</span>
+<span class="fc" id="L52">                        .toFlowable()))</span>
+<span class="fc" id="L53">                .doOnNext(user -&gt; log.info(</span>
                         &quot;User registered customerId={} username={}&quot;,
-<span class="fc" id="L52">                        user.customerId(),</span>
-<span class="fc" id="L53">                        user.username()))</span>
-<span class="fc" id="L54">                .map(user -&gt; ResponseEntity.status(HttpStatus.CREATED)</span>
-<span class="fc" id="L55">                        .body(new RegisterResponseDto(user.customerId(), user.username())));</span>
+<span class="fc" id="L55">                        user.customerId(),</span>
+<span class="fc" id="L56">                        user.username()))</span>
+<span class="fc" id="L57">                .map(user -&gt; ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="fc" id="L58">                        .body(new RegisterResponseDto(user.customerId(), user.username())));</span>
     }
 
     @Override
     public Mono&lt;ResponseEntity&lt;TokenResponseDto&gt;&gt; login(
             Mono&lt;LoginRequestDto&gt; loginRequestDto,
             ServerWebExchange exchange) {
-<span class="fc" id="L62">        return loginRequestDto</span>
-<span class="fc" id="L63">                .flatMap(request -&gt; Mono.from(loginUseCase</span>
-<span class="fc" id="L64">                        .execute(request.getUsername(), request.getPassword())</span>
-<span class="fc" id="L65">                        .toFlowable()))</span>
-<span class="fc" id="L66">                .map(token -&gt; ResponseEntity.ok(</span>
-<span class="fc" id="L67">                        new TokenResponseDto(token.value(), BEARER, token.expiresIn())));</span>
+<span class="fc" id="L65">        return loginRequestDto</span>
+<span class="fc" id="L66">                .flatMap(request -&gt; Mono.from(loginUseCase</span>
+<span class="fc" id="L67">                        .execute(request.getUsername(), request.getPassword())</span>
+<span class="fc" id="L68">                        .toFlowable()))</span>
+<span class="fc" id="L69">                .map(token -&gt; ResponseEntity.ok(</span>
+<span class="fc" id="L70">                        new TokenResponseDto(token.value(), BEARER, token.expiresIn())));</span>
     }
 
     @Override
     public Mono&lt;ResponseEntity&lt;WalletUserResponseDto&gt;&gt; registerWalletUser(
             Mono&lt;WalletUserRequestDto&gt; walletUserRequestDto,
             ServerWebExchange exchange) {
-<span class="fc" id="L74">        return walletUserRequestDto</span>
-<span class="fc" id="L75">                .flatMap(request -&gt; Mono.from(registerWalletUserUseCase</span>
-<span class="fc" id="L76">                        .execute(request.getPhone(), request.getPassword())</span>
-<span class="fc" id="L77">                        .toFlowable()))</span>
-<span class="fc" id="L78">                .doOnNext(user -&gt; log.info(&quot;Wallet user registered walletId={}&quot;, user.walletId()))</span>
-<span class="fc" id="L79">                .map(user -&gt; ResponseEntity.status(HttpStatus.CREATED)</span>
-<span class="fc" id="L80">                        .body(new WalletUserResponseDto(user.walletId(), user.phone())));</span>
+<span class="fc" id="L77">        return walletUserRequestDto</span>
+<span class="fc" id="L78">                .flatMap(request -&gt; Mono.from(registerWalletUserUseCase</span>
+<span class="fc" id="L79">                        .execute(request.getPhone(), request.getPassword())</span>
+<span class="fc" id="L80">                        .toFlowable()))</span>
+<span class="fc" id="L81">                .doOnNext(user -&gt; log.info(&quot;Wallet user registered walletId={}&quot;, user.walletId()))</span>
+<span class="fc" id="L82">                .map(user -&gt; ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="fc" id="L83">                        .body(new WalletUserResponseDto(user.walletId(), user.phone())));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;TokenResponseDto&gt;&gt; adminLogin(
+            Mono&lt;AdminLoginRequestDto&gt; adminLoginRequestDto,
+            ServerWebExchange exchange) {
+<span class="fc" id="L90">        return adminLoginRequestDto</span>
+<span class="fc" id="L91">                .flatMap(request -&gt; Mono.from(adminLoginUseCase</span>
+<span class="fc" id="L92">                        .execute(request.getUsername(), request.getPassword())</span>
+<span class="fc" id="L93">                        .toFlowable()))</span>
+<span class="fc" id="L94">                .doOnNext(token -&gt; log.info(&quot;Admin logged in&quot;))</span>
+<span class="fc" id="L95">                .map(token -&gt; ResponseEntity.ok(</span>
+<span class="fc" id="L96">                        new TokenResponseDto(token.value(), BEARER, token.expiresIn())));</span>
     }
 
     @Override
     public Mono&lt;ResponseEntity&lt;TokenResponseDto&gt;&gt; walletLogin(
             Mono&lt;WalletLoginRequestDto&gt; walletLoginRequestDto,
             ServerWebExchange exchange) {
-<span class="fc" id="L87">        return walletLoginRequestDto</span>
-<span class="fc" id="L88">                .flatMap(request -&gt; Mono.from(walletLoginUseCase</span>
-<span class="fc" id="L89">                        .execute(request.getPhone(), request.getPassword())</span>
-<span class="fc" id="L90">                        .toFlowable()))</span>
-<span class="fc" id="L91">                .map(token -&gt; ResponseEntity.ok(</span>
-<span class="fc" id="L92">                        new TokenResponseDto(token.value(), BEARER, token.expiresIn())));</span>
+<span class="fc" id="L103">        return walletLoginRequestDto</span>
+<span class="fc" id="L104">                .flatMap(request -&gt; Mono.from(walletLoginUseCase</span>
+<span class="fc" id="L105">                        .execute(request.getPhone(), request.getPassword())</span>
+<span class="fc" id="L106">                        .toFlowable()))</span>
+<span class="fc" id="L107">                .map(token -&gt; ResponseEntity.ok(</span>
+<span class="fc" id="L108">                        new TokenResponseDto(token.value(), BEARER, token.expiresIn())));</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

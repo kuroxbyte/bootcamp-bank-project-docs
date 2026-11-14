@@ -22,51 +22,55 @@ final class CreditPersistenceMapper {
 <span class="fc" id="L22">                credit.getType().name(),</span>
 <span class="fc" id="L23">                credit.getAmount(),</span>
 <span class="fc" id="L24">                credit.getDueDate(),</span>
-<span class="fc" id="L25">                credit.getGrantedAt());</span>
+<span class="fc" id="L25">                credit.getGrantedAt(),</span>
+<span class="fc" id="L26">                credit.getClosedAt());</span>
     }
 
     static CreditCardDocument toDocument(CreditCard creditCard) {
-<span class="fc" id="L29">        return new CreditCardDocument(</span>
-<span class="fc" id="L30">                creditCard.getId(),</span>
-<span class="fc" id="L31">                creditCard.getCustomer().id(),</span>
-<span class="fc" id="L32">                creditCard.getCustomer().type().name(),</span>
-<span class="fc" id="L33">                creditCard.getCustomer().profile().name(),</span>
-<span class="fc" id="L34">                creditCard.getCreditLimit(),</span>
-<span class="fc" id="L35">                creditCard.getPaymentDueDay(),</span>
-<span class="fc" id="L36">                creditCard.getGrantedAt());</span>
+<span class="fc" id="L30">        return new CreditCardDocument(</span>
+<span class="fc" id="L31">                creditCard.getId(),</span>
+<span class="fc" id="L32">                creditCard.getCustomer().id(),</span>
+<span class="fc" id="L33">                creditCard.getCustomer().type().name(),</span>
+<span class="fc" id="L34">                creditCard.getCustomer().profile().name(),</span>
+<span class="fc" id="L35">                creditCard.getCreditLimit(),</span>
+<span class="fc" id="L36">                creditCard.getPaymentDueDay(),</span>
+<span class="fc" id="L37">                creditCard.getGrantedAt(),</span>
+<span class="fc" id="L38">                creditCard.getClosedAt());</span>
     }
 
     static Credit toDomain(CreditDocument document) {
-<span class="fc" id="L40">        Credit credit =</span>
+<span class="fc" id="L42">        Credit credit =</span>
                 new Credit(
-<span class="fc" id="L42">                        customer(</span>
-<span class="fc" id="L43">                                document.getCustomerId(),</span>
-<span class="fc" id="L44">                                document.getCustomerType(),</span>
-<span class="fc" id="L45">                                document.getCustomerProfile()),</span>
-<span class="fc" id="L46">                        CreditType.valueOf(document.getType()),</span>
-<span class="fc" id="L47">                        document.getAmount(),</span>
-<span class="fc" id="L48">                        document.getDueDate());</span>
-<span class="fc" id="L49">        credit.setId(document.getId());</span>
-<span class="fc" id="L50">        credit.setGrantedAt(document.getGrantedAt());</span>
-<span class="fc" id="L51">        return credit;</span>
+<span class="fc" id="L44">                        customer(</span>
+<span class="fc" id="L45">                                document.getCustomerId(),</span>
+<span class="fc" id="L46">                                document.getCustomerType(),</span>
+<span class="fc" id="L47">                                document.getCustomerProfile()),</span>
+<span class="fc" id="L48">                        CreditType.valueOf(document.getType()),</span>
+<span class="fc" id="L49">                        document.getAmount(),</span>
+<span class="fc" id="L50">                        document.getDueDate());</span>
+<span class="fc" id="L51">        credit.setId(document.getId());</span>
+<span class="fc" id="L52">        credit.setGrantedAt(document.getGrantedAt());</span>
+<span class="fc" id="L53">        credit.setClosedAt(document.getClosedAt());</span>
+<span class="fc" id="L54">        return credit;</span>
     }
 
     static CreditCard toDomain(CreditCardDocument document) {
-<span class="fc" id="L55">        CreditCard creditCard =</span>
+<span class="fc" id="L58">        CreditCard creditCard =</span>
                 new CreditCard(
-<span class="fc" id="L57">                        customer(</span>
-<span class="fc" id="L58">                                document.getCustomerId(),</span>
-<span class="fc" id="L59">                                document.getCustomerType(),</span>
-<span class="fc" id="L60">                                document.getCustomerProfile()),</span>
-<span class="fc" id="L61">                        document.getCreditLimit(),</span>
-<span class="fc" id="L62">                        document.getPaymentDueDay());</span>
-<span class="fc" id="L63">        creditCard.setId(document.getId());</span>
-<span class="fc" id="L64">        creditCard.setGrantedAt(document.getGrantedAt());</span>
-<span class="fc" id="L65">        return creditCard;</span>
+<span class="fc" id="L60">                        customer(</span>
+<span class="fc" id="L61">                                document.getCustomerId(),</span>
+<span class="fc" id="L62">                                document.getCustomerType(),</span>
+<span class="fc" id="L63">                                document.getCustomerProfile()),</span>
+<span class="fc" id="L64">                        document.getCreditLimit(),</span>
+<span class="fc" id="L65">                        document.getPaymentDueDay());</span>
+<span class="fc" id="L66">        creditCard.setId(document.getId());</span>
+<span class="fc" id="L67">        creditCard.setGrantedAt(document.getGrantedAt());</span>
+<span class="fc" id="L68">        creditCard.setClosedAt(document.getClosedAt());</span>
+<span class="fc" id="L69">        return creditCard;</span>
     }
 
     private static Customer customer(String id, String type, String profile) {
-<span class="fc" id="L69">        return new Customer(id, CustomerType.valueOf(type), CustomerProfile.valueOf(profile));</span>
+<span class="fc" id="L73">        return new Customer(id, CustomerType.valueOf(type), CustomerProfile.valueOf(profile));</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

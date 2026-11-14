@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ProductWebClientAdapter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">customer-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.customerservice.infrastructure.client</a> &gt; <span class="el_source">ProductWebClientAdapter.java</span></div><h1>ProductWebClientAdapter.java</h1><pre class="source lang-java linenums">package dev.bootcamp.customerservice.infrastructure.client;
+
+import dev.bootcamp.customerservice.application.port.ProductClient;
+import io.reactivex.rxjava3.core.Flowable;
+import io.reactivex.rxjava3.core.Single;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.util.List;
+
+/**
+ * Implementa el puerto {@link ProductClient} con los listados de productos del cliente de
+ * account-service ({@code /api/v1/accounts}) y credit-service ({@code /api/v1/credits} y
+ * {@code /api/v1/credit-cards}), que solo devuelven productos activos.
+ *
+ * &lt;p&gt;Cada llamada pasa por el circuit breaker del servicio consultado. Las tarjetas de débito no
+ * se consultan: necesitan una cuenta activa.
+ */
+@Component
+public class ProductWebClientAdapter implements ProductClient {
+
+    private static final String CUSTOMER_ID_HEADER = &quot;X-Customer-Id&quot;;
+
+    private final List&lt;ProductList&gt; productLists;
+    private final RemoteLookup remoteLookup;
+
+    /**
+     * Crea el cliente con las URL base configuradas.
+     */
+    public ProductWebClientAdapter(
+            WebClient.Builder webClientBuilder,
+            @Value(&quot;${clients.account-service.base-url}&quot;) String accountBaseUrl,
+            @Value(&quot;${clients.credit-service.base-url}&quot;) String creditBaseUrl,
+<span class="fc" id="L35">            RemoteLookup remoteLookup) {</span>
+<span class="fc" id="L36">        WebClient accounts = webClientBuilder.clone().baseUrl(accountBaseUrl).build();</span>
+<span class="fc" id="L37">        WebClient credits = webClientBuilder.clone().baseUrl(creditBaseUrl).build();</span>
+<span class="fc" id="L38">        this.productLists = List.of(</span>
+                new ProductList(&quot;account-service&quot;, accounts, &quot;/api/v1/accounts&quot;),
+                new ProductList(&quot;credit-service&quot;, credits, &quot;/api/v1/credits&quot;),
+                new ProductList(&quot;credit-service&quot;, credits, &quot;/api/v1/credit-cards&quot;));
+<span class="fc" id="L42">        this.remoteLookup = remoteLookup;</span>
+<span class="fc" id="L43">    }</span>
+
+    /**
+     * Consulta los listados en orden y se detiene en el primer producto que encuentra.
+     */
+    @Override
+    public Single&lt;Boolean&gt; hasActiveProducts(String customerId) {
+<span class="fc" id="L50">        return Flowable.fromIterable(productLists)</span>
+<span class="fc" id="L51">                .concatMap(list -&gt; remoteLookup.findAll(</span>
+<span class="fc" id="L52">                        list.webClient().get()</span>
+<span class="fc" id="L53">                                .uri(list.path())</span>
+<span class="fc" id="L54">                                .header(CUSTOMER_ID_HEADER, customerId)</span>
+<span class="fc" id="L55">                                .retrieve()</span>
+<span class="fc" id="L56">                                .bodyToFlux(Object.class),</span>
+<span class="fc" id="L57">                        list.serviceName()))</span>
+<span class="fc" id="L58">                .any(product -&gt; true);</span>
+    }
+
+    /**
+     * Listado de productos de un cliente en otro microservicio.
+     */
+<span class="fc" id="L64">    private record ProductList(String serviceName, WebClient webClient, String path) {}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

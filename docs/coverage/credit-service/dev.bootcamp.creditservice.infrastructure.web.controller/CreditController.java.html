@@ -2,9 +2,11 @@
 
 import dev.bootcamp.creditservice.application.usecase.CreateCreditUseCase;
 import dev.bootcamp.creditservice.application.usecase.GetCreditsUseCase;
+import dev.bootcamp.creditservice.application.usecase.UpdateCreditUseCase;
 import dev.bootcamp.creditservice.infrastructure.web.api.CreditsApi;
 import dev.bootcamp.creditservice.infrastructure.web.dto.CreditRequestDto;
 import dev.bootcamp.creditservice.infrastructure.web.dto.CreditResponseDto;
+import dev.bootcamp.creditservice.infrastructure.web.dto.CreditUpdateRequestDto;
 import dev.bootcamp.creditservice.infrastructure.web.mapper.CreditWebMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,69 +20,100 @@ import reactor.core.publisher.Mono;
 /**
  * Endpoints de créditos personales y empresariales definidos en el contrato OpenAPI.
  */
-<span class="fc" id="L21">@Slf4j</span>
+<span class="fc" id="L23">@Slf4j</span>
 @RestController
 @RequiredArgsConstructor
 public class CreditController implements CreditsApi {
 
     private final CreateCreditUseCase createCreditUseCase;
     private final GetCreditsUseCase getCreditsUseCase;
+    private final UpdateCreditUseCase updateCreditUseCase;
 
     @Override
     public Mono&lt;ResponseEntity&lt;CreditResponseDto&gt;&gt; createCredit(
             String customerId,
             Mono&lt;CreditRequestDto&gt; creditRequestDto,
             ServerWebExchange exchange) {
-<span class="fc" id="L34">        return creditRequestDto</span>
-<span class="fc" id="L35">                .flatMap(</span>
+<span class="fc" id="L37">        return creditRequestDto</span>
+<span class="fc" id="L38">                .flatMap(</span>
                         request -&gt;
-<span class="fc" id="L37">                                Mono.from(</span>
+<span class="fc" id="L40">                                Mono.from(</span>
                                         createCreditUseCase
-<span class="fc" id="L39">                                                .execute(</span>
+<span class="fc" id="L42">                                                .execute(</span>
                                                         customerId,
-<span class="fc" id="L41">                                                        CreditWebMapper.toDomain(request.getType()),</span>
-<span class="fc" id="L42">                                                        request.getAmount(),</span>
-<span class="fc" id="L43">                                                        request.getDueDate())</span>
-<span class="fc" id="L44">                                                .toFlowable()))</span>
-<span class="fc" id="L45">                .doOnNext(</span>
+<span class="fc" id="L44">                                                        CreditWebMapper.toDomain(request.getType()),</span>
+<span class="fc" id="L45">                                                        request.getAmount(),</span>
+<span class="fc" id="L46">                                                        request.getDueDate())</span>
+<span class="fc" id="L47">                                                .toFlowable()))</span>
+<span class="fc" id="L48">                .doOnNext(</span>
                         credit -&gt;
-<span class="fc" id="L47">                                log.info(</span>
+<span class="fc" id="L50">                                log.info(</span>
                                         &quot;Credit granted creditId={} customerId={} type={}&quot;,
-<span class="fc" id="L49">                                        credit.getId(),</span>
+<span class="fc" id="L52">                                        credit.getId(),</span>
                                         customerId,
-<span class="fc" id="L51">                                        credit.getType()))</span>
-<span class="fc" id="L52">                .map(</span>
+<span class="fc" id="L54">                                        credit.getType()))</span>
+<span class="fc" id="L55">                .map(</span>
                         credit -&gt;
-<span class="fc" id="L54">                                ResponseEntity.status(HttpStatus.CREATED)</span>
-<span class="fc" id="L55">                                        .body(CreditWebMapper.toResponse(credit)));</span>
+<span class="fc" id="L57">                                ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="fc" id="L58">                                        .body(CreditWebMapper.toResponse(credit)));</span>
     }
 
     @Override
     public Mono&lt;ResponseEntity&lt;Flux&lt;CreditResponseDto&gt;&gt;&gt; listAllCredits(
             ServerWebExchange exchange) {
-<span class="fc" id="L61">        log.debug(&quot;Listing all credits for reports&quot;);</span>
-<span class="fc" id="L62">        return Mono.just(ResponseEntity.ok(</span>
-<span class="fc" id="L63">                Flux.from(getCreditsUseCase.findAll()).map(CreditWebMapper::toResponse)));</span>
+<span class="fc" id="L64">        log.debug(&quot;Listing all credits for reports&quot;);</span>
+<span class="fc" id="L65">        return Mono.just(ResponseEntity.ok(</span>
+<span class="fc" id="L66">                Flux.from(getCreditsUseCase.findAll()).map(CreditWebMapper::toResponse)));</span>
     }
 
     @Override
     public Mono&lt;ResponseEntity&lt;Flux&lt;CreditResponseDto&gt;&gt;&gt; listCredits(
             String customerId,
             ServerWebExchange exchange) {
-<span class="fc" id="L70">        log.debug(&quot;Listing credits customerId={}&quot;, customerId);</span>
-<span class="fc" id="L71">        Flux&lt;CreditResponseDto&gt; credits =</span>
-<span class="fc" id="L72">                Flux.from(getCreditsUseCase.findByCustomerId(customerId))</span>
-<span class="fc" id="L73">                        .map(CreditWebMapper::toResponse);</span>
-<span class="fc" id="L74">        return Mono.just(ResponseEntity.ok(credits));</span>
+<span class="fc" id="L73">        log.debug(&quot;Listing credits customerId={}&quot;, customerId);</span>
+<span class="fc" id="L74">        Flux&lt;CreditResponseDto&gt; credits =</span>
+<span class="fc" id="L75">                Flux.from(getCreditsUseCase.findByCustomerId(customerId))</span>
+<span class="fc" id="L76">                        .map(CreditWebMapper::toResponse);</span>
+<span class="fc" id="L77">        return Mono.just(ResponseEntity.ok(credits));</span>
     }
 
     @Override
     public Mono&lt;ResponseEntity&lt;CreditResponseDto&gt;&gt; getCreditById(
             String creditId,
             ServerWebExchange exchange) {
-<span class="fc" id="L81">        log.debug(&quot;Fetching credit creditId={}&quot;, creditId);</span>
-<span class="fc" id="L82">        return Mono.from(getCreditsUseCase.findById(creditId).toFlowable())</span>
-<span class="fc" id="L83">                .map(credit -&gt; ResponseEntity.ok(CreditWebMapper.toResponse(credit)));</span>
+<span class="fc" id="L84">        log.debug(&quot;Fetching credit creditId={}&quot;, creditId);</span>
+<span class="fc" id="L85">        return Mono.from(getCreditsUseCase.findById(creditId).toFlowable())</span>
+<span class="fc" id="L86">                .map(credit -&gt; ResponseEntity.ok(CreditWebMapper.toResponse(credit)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;CreditResponseDto&gt;&gt; updateCredit(
+            String creditId,
+            String adminId,
+            Mono&lt;CreditUpdateRequestDto&gt; creditUpdateRequestDto,
+            ServerWebExchange exchange) {
+<span class="fc" id="L95">        return creditUpdateRequestDto</span>
+<span class="fc" id="L96">                .flatMap(request -&gt; Mono.from(updateCreditUseCase</span>
+<span class="fc" id="L97">                        .update(creditId, request.getDueDate())</span>
+<span class="fc" id="L98">                        .toFlowable()))</span>
+<span class="fc" id="L99">                .doOnNext(credit -&gt; log.info(</span>
+                        &quot;Credit updated creditId={} dueDate={} adminId={}&quot;,
+                        creditId,
+<span class="fc" id="L102">                        credit.getDueDate(),</span>
+                        adminId))
+<span class="fc" id="L104">                .map(credit -&gt; ResponseEntity.ok(CreditWebMapper.toResponse(credit)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;Void&gt;&gt; deleteCredit(
+            String creditId,
+            String adminId,
+            ServerWebExchange exchange) {
+<span class="fc" id="L112">        return Mono.from(updateCreditUseCase.close(creditId).toFlowable())</span>
+<span class="fc" id="L113">                .then(Mono.fromCallable(() -&gt; {</span>
+<span class="fc" id="L114">                    log.info(&quot;Credit closed creditId={} adminId={}&quot;, creditId, adminId);</span>
+<span class="fc" id="L115">                    return ResponseEntity.noContent().&lt;Void&gt;build();</span>
+                }));
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

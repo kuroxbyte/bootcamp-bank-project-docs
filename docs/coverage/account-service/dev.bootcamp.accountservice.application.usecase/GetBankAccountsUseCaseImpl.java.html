@@ -21,14 +21,26 @@ public class GetBankAccountsUseCaseImpl implements GetBankAccountsUseCase {
 
     @Override
     public Single&lt;BankAccount&gt; findById(String accountId) {
-<span class="fc" id="L24">        return bankAccountRepository</span>
-<span class="fc" id="L25">                .findById(accountId)</span>
-<span class="fc" id="L26">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(&quot;La cuenta no existe&quot;)));</span>
+<span class="fc" id="L24">        return findActive(bankAccountRepository, accountId);</span>
     }
 
     @Override
     public Flowable&lt;BankAccount&gt; findAll() {
-<span class="fc" id="L31">        return bankAccountRepository.findAll();</span>
+<span class="fc" id="L29">        return bankAccountRepository.findAll();</span>
+    }
+
+    /**
+     * Busca una cuenta activa.
+     *
+     * @return la cuenta; error {@link NotFoundException} si no existe o fue dada de baja
+     */
+    static Single&lt;BankAccount&gt; findActive(
+            BankAccountRepository bankAccountRepository,
+            String accountId) {
+<span class="fc" id="L40">        return bankAccountRepository</span>
+<span class="fc" id="L41">                .findById(accountId)</span>
+<span class="fc bfc" id="L42" title="All 2 branches covered.">                .filter(account -&gt; !account.isClosed())</span>
+<span class="fc" id="L43">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(&quot;La cuenta no existe&quot;)));</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

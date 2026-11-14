@@ -16,11 +16,12 @@ import java.time.Instant;
 /**
  * Implementa el puerto {@link CustomerEventPublisher} publicando en Kafka.
  *
- * &lt;p&gt;El evento se publica después de guardar el cliente. Si Kafka no está disponible (se espera
- * como máximo {@code max.block.ms}, 1 s en config-repo), el error se registra y la creación del
- * cliente no falla: el evento se pierde (limitación conocida; evitarla requiere el patrón outbox).
+ * &lt;p&gt;Publica {@code CustomerCreated}, {@code CustomerUpdated} y {@code CustomerClosed} después de
+ * guardar el cliente. Si Kafka no está disponible (se espera como máximo {@code max.block.ms}, 1 s
+ * en config-repo), el error se registra y la operación no falla: el evento se pierde (limitación
+ * conocida; evitarla requiere el patrón outbox).
  */
-<span class="fc" id="L23">@Slf4j</span>
+<span class="fc" id="L24">@Slf4j</span>
 @Component
 public class CustomerKafkaEventPublisher implements CustomerEventPublisher {
 
@@ -36,39 +37,55 @@ public class CustomerKafkaEventPublisher implements CustomerEventPublisher {
             KafkaTemplate&lt;String, String&gt; kafkaTemplate,
             JsonMapper jsonMapper,
             Clock clock,
-<span class="fc" id="L39">            @Value(&quot;${messaging.topics.customer-events}&quot;) String topic) {</span>
-<span class="fc" id="L40">        this.kafkaTemplate = kafkaTemplate;</span>
-<span class="fc" id="L41">        this.jsonMapper = jsonMapper;</span>
-<span class="fc" id="L42">        this.clock = clock;</span>
-<span class="fc" id="L43">        this.topic = topic;</span>
-<span class="fc" id="L44">    }</span>
+<span class="fc" id="L40">            @Value(&quot;${messaging.topics.customer-events}&quot;) String topic) {</span>
+<span class="fc" id="L41">        this.kafkaTemplate = kafkaTemplate;</span>
+<span class="fc" id="L42">        this.jsonMapper = jsonMapper;</span>
+<span class="fc" id="L43">        this.clock = clock;</span>
+<span class="fc" id="L44">        this.topic = topic;</span>
+<span class="fc" id="L45">    }</span>
 
     @Override
     public Completable publishCustomerCreated(Customer customer) {
-<span class="fc" id="L48">        return Completable.defer(() -&gt; {</span>
-<span class="fc" id="L49">            CustomerCreatedEvent event = new CustomerCreatedEvent(</span>
-                    CustomerCreatedEvent.EVENT_TYPE,
-<span class="fc" id="L51">                    customer.getId(),</span>
-<span class="fc" id="L52">                    customer.getType().name(),</span>
-<span class="fc" id="L53">                    customer.getProfile().name(),</span>
-<span class="fc" id="L54">                    Instant.now(clock));</span>
-<span class="fc" id="L55">            return Completable.fromCompletionStage(kafkaTemplate.send(</span>
+<span class="fc" id="L49">        return publish(CustomerEvent.CUSTOMER_CREATED, customer);</span>
+    }
+
+    @Override
+    public Completable publishCustomerUpdated(Customer customer) {
+<span class="fc" id="L54">        return publish(CustomerEvent.CUSTOMER_UPDATED, customer);</span>
+    }
+
+    @Override
+    public Completable publishCustomerClosed(Customer customer) {
+<span class="fc" id="L59">        return publish(CustomerEvent.CUSTOMER_CLOSED, customer);</span>
+    }
+
+    private Completable publish(String eventType, Customer customer) {
+<span class="fc" id="L63">        return Completable.defer(() -&gt; {</span>
+<span class="fc" id="L64">            CustomerEvent event = new CustomerEvent(</span>
+                    eventType,
+<span class="fc" id="L66">                    customer.getId(),</span>
+<span class="fc" id="L67">                    customer.getType().name(),</span>
+<span class="fc" id="L68">                    customer.getProfile().name(),</span>
+<span class="fc" id="L69">                    Instant.now(clock));</span>
+<span class="fc" id="L70">            return Completable.fromCompletionStage(kafkaTemplate.send(</span>
                     topic,
-<span class="fc" id="L57">                    customer.getId(),</span>
-<span class="fc" id="L58">                    jsonMapper.writeValueAsString(event)));</span>
+<span class="fc" id="L72">                    customer.getId(),</span>
+<span class="fc" id="L73">                    jsonMapper.writeValueAsString(event)));</span>
         })
                 // send() puede bloquear mientras busca al broker (hasta max.block.ms): fuera del
                 // hilo de eventos de WebFlux.
-<span class="fc" id="L62">                .subscribeOn(Schedulers.io())</span>
-<span class="fc" id="L63">                .doOnComplete(() -&gt; log.info(</span>
-                        &quot;CustomerCreated published customerId={}&quot;,
-<span class="fc" id="L65">                        customer.getId()))</span>
-<span class="fc" id="L66">                .onErrorComplete(error -&gt; {</span>
-<span class="fc" id="L67">                    log.error(</span>
-                            &quot;CustomerCreated could not be published customerId={}&quot;,
-<span class="fc" id="L69">                            customer.getId(),</span>
+<span class="fc" id="L77">                .subscribeOn(Schedulers.io())</span>
+<span class="fc" id="L78">                .doOnComplete(() -&gt; log.info(</span>
+                        &quot;{} published customerId={}&quot;,
+                        eventType,
+<span class="fc" id="L81">                        customer.getId()))</span>
+<span class="fc" id="L82">                .onErrorComplete(error -&gt; {</span>
+<span class="fc" id="L83">                    log.error(</span>
+                            &quot;{} could not be published customerId={}&quot;,
+                            eventType,
+<span class="fc" id="L86">                            customer.getId(),</span>
                             error);
-<span class="fc" id="L71">                    return true;</span>
+<span class="fc" id="L88">                    return true;</span>
                 });
     }
 }

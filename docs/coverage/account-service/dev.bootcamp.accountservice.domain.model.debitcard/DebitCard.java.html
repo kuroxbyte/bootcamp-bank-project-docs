@@ -27,6 +27,11 @@ public class DebitCard {
     @Setter private LocalDate issuedAt;
 
     /**
+     * Fecha de baja; null mientras la tarjeta está activa.
+     */
+    @Setter private LocalDate closedAt;
+
+    /**
      * Crea la tarjeta con su cuenta principal y otras cuentas asociadas.
      *
      * @param customerId       cliente dueño
@@ -34,23 +39,23 @@ public class DebitCard {
      * @param otherAccountIds  otras cuentas asociadas (puede estar vacío o ser null)
      * @throws BusinessRuleException si falta la cuenta principal o se repite una cuenta
      */
-<span class="fc" id="L37">    public DebitCard(String customerId, String primaryAccountId, List&lt;String&gt; otherAccountIds) {</span>
-<span class="pc bpc" id="L38" title="1 of 4 branches missed.">        if (primaryAccountId == null || primaryAccountId.isBlank()) {</span>
-<span class="fc" id="L39">            throw new BusinessRuleException(&quot;La tarjeta de débito debe tener una cuenta principal&quot;);</span>
+<span class="fc" id="L42">    public DebitCard(String customerId, String primaryAccountId, List&lt;String&gt; otherAccountIds) {</span>
+<span class="pc bpc" id="L43" title="1 of 4 branches missed.">        if (primaryAccountId == null || primaryAccountId.isBlank()) {</span>
+<span class="fc" id="L44">            throw new BusinessRuleException(&quot;La tarjeta de débito debe tener una cuenta principal&quot;);</span>
         }
-<span class="fc" id="L41">        List&lt;String&gt; all = new ArrayList&lt;&gt;();</span>
-<span class="fc" id="L42">        all.add(primaryAccountId);</span>
-<span class="fc bfc" id="L43" title="All 2 branches covered.">        if (otherAccountIds != null) {</span>
-<span class="fc" id="L44">            all.addAll(otherAccountIds);</span>
+<span class="fc" id="L46">        List&lt;String&gt; all = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L47">        all.add(primaryAccountId);</span>
+<span class="fc bfc" id="L48" title="All 2 branches covered.">        if (otherAccountIds != null) {</span>
+<span class="fc" id="L49">            all.addAll(otherAccountIds);</span>
         }
-<span class="fc" id="L46">        Set&lt;String&gt; unique = new LinkedHashSet&lt;&gt;(all);</span>
-<span class="fc bfc" id="L47" title="All 2 branches covered.">        if (unique.size() != all.size()) {</span>
-<span class="fc" id="L48">            throw new BusinessRuleException(&quot;Una cuenta no puede repetirse en la tarjeta&quot;);</span>
+<span class="fc" id="L51">        Set&lt;String&gt; unique = new LinkedHashSet&lt;&gt;(all);</span>
+<span class="fc bfc" id="L52" title="All 2 branches covered.">        if (unique.size() != all.size()) {</span>
+<span class="fc" id="L53">            throw new BusinessRuleException(&quot;Una cuenta no puede repetirse en la tarjeta&quot;);</span>
         }
-<span class="fc" id="L50">        this.customerId = customerId;</span>
-<span class="fc" id="L51">        this.primaryAccountId = primaryAccountId;</span>
-<span class="fc" id="L52">        this.accountIds = new ArrayList&lt;&gt;(unique);</span>
-<span class="fc" id="L53">    }</span>
+<span class="fc" id="L55">        this.customerId = customerId;</span>
+<span class="fc" id="L56">        this.primaryAccountId = primaryAccountId;</span>
+<span class="fc" id="L57">        this.accountIds = new ArrayList&lt;&gt;(unique);</span>
+<span class="fc" id="L58">    }</span>
 
     /**
      * Reconstruye una tarjeta guardada.
@@ -61,26 +66,40 @@ public class DebitCard {
             String primaryAccountId,
             List&lt;String&gt; accountIds,
             LocalDate issuedAt) {
-<span class="fc" id="L64">        List&lt;String&gt; others = new ArrayList&lt;&gt;(accountIds);</span>
-<span class="fc" id="L65">        others.remove(primaryAccountId);</span>
-<span class="fc" id="L66">        DebitCard card = new DebitCard(customerId, primaryAccountId, others);</span>
-<span class="fc" id="L67">        card.setId(id);</span>
-<span class="fc" id="L68">        card.setIssuedAt(issuedAt);</span>
-<span class="fc" id="L69">        return card;</span>
+<span class="fc" id="L69">        List&lt;String&gt; others = new ArrayList&lt;&gt;(accountIds);</span>
+<span class="fc" id="L70">        others.remove(primaryAccountId);</span>
+<span class="fc" id="L71">        DebitCard card = new DebitCard(customerId, primaryAccountId, others);</span>
+<span class="fc" id="L72">        card.setId(id);</span>
+<span class="fc" id="L73">        card.setIssuedAt(issuedAt);</span>
+<span class="fc" id="L74">        return card;</span>
     }
 
     /**
      * Cuentas asociadas, empezando por la principal y luego en el orden en que se asociaron.
      */
     public List&lt;String&gt; getAccountIds() {
-<span class="fc" id="L76">        return List.copyOf(accountIds);</span>
+<span class="fc" id="L81">        return List.copyOf(accountIds);</span>
     }
+
+    /**
+     * Indica si la tarjeta fue dada de baja.
+     */
+    public boolean isClosed() {
+<span class="fc bfc" id="L88" title="All 2 branches covered.">        return closedAt != null;</span>
+    }
+
+    /**
+     * Da de baja la tarjeta: sus cuentas quedan libres para asociarse a otra tarjeta.
+     */
+    public void close(LocalDate today) {
+<span class="fc" id="L95">        this.closedAt = today;</span>
+<span class="fc" id="L96">    }</span>
 
     /**
      * Indica si la tarjeta pertenece al cliente.
      */
     public boolean belongsTo(String customerId) {
-<span class="fc" id="L83">        return this.customerId.equals(customerId);</span>
+<span class="fc" id="L102">        return this.customerId.equals(customerId);</span>
     }
 
     /**
@@ -89,11 +108,11 @@ public class DebitCard {
      * @throws BusinessRuleException si la cuenta ya está asociada a la tarjeta
      */
     public void associateAccount(String accountId) {
-<span class="fc bfc" id="L92" title="All 2 branches covered.">        if (accountIds.contains(accountId)) {</span>
-<span class="fc" id="L93">            throw new BusinessRuleException(&quot;La cuenta ya está asociada a la tarjeta&quot;);</span>
+<span class="fc bfc" id="L111" title="All 2 branches covered.">        if (accountIds.contains(accountId)) {</span>
+<span class="fc" id="L112">            throw new BusinessRuleException(&quot;La cuenta ya está asociada a la tarjeta&quot;);</span>
         }
-<span class="fc" id="L95">        accountIds.add(accountId);</span>
-<span class="fc" id="L96">    }</span>
+<span class="fc" id="L114">        accountIds.add(accountId);</span>
+<span class="fc" id="L115">    }</span>
 
     /**
      * Cambia la cuenta principal por otra cuenta ya asociada.
@@ -101,11 +120,11 @@ public class DebitCard {
      * @throws BusinessRuleException si la cuenta no está asociada a la tarjeta
      */
     public void changePrimaryAccount(String accountId) {
-<span class="fc bfc" id="L104" title="All 2 branches covered.">        if (!accountIds.contains(accountId)) {</span>
-<span class="fc" id="L105">            throw new BusinessRuleException(</span>
+<span class="fc bfc" id="L123" title="All 2 branches covered.">        if (!accountIds.contains(accountId)) {</span>
+<span class="fc" id="L124">            throw new BusinessRuleException(</span>
                     &quot;La cuenta principal debe estar asociada a la tarjeta&quot;);
         }
-<span class="fc" id="L108">        primaryAccountId = accountId;</span>
-<span class="fc" id="L109">    }</span>
+<span class="fc" id="L127">        primaryAccountId = accountId;</span>
+<span class="fc" id="L128">    }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

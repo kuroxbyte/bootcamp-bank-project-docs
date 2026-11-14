@@ -15,16 +15,18 @@ final class CustomerPersistenceMapper {
 <span class="fc" id="L15">                customer.getId(),</span>
 <span class="fc" id="L16">                customer.getName(),</span>
 <span class="fc" id="L17">                customer.getType().name(),</span>
-<span class="fc" id="L18">                customer.getProfile().name());</span>
+<span class="fc" id="L18">                customer.getProfile().name(),</span>
+<span class="fc" id="L19">                customer.getClosedAt());</span>
     }
 
     static Customer toDomain(CustomerDocument document) {
-<span class="fc" id="L22">        Customer customer = new Customer();</span>
-<span class="fc" id="L23">        customer.setId(document.getId());</span>
-<span class="fc" id="L24">        customer.setName(document.getName());</span>
-<span class="fc" id="L25">        customer.setType(CustomerType.valueOf(document.getType()));</span>
-<span class="fc" id="L26">        customer.setProfile(CustomerProfile.valueOf(document.getProfile()));</span>
-<span class="fc" id="L27">        return customer;</span>
+<span class="fc" id="L23">        Customer customer = new Customer();</span>
+<span class="fc" id="L24">        customer.setId(document.getId());</span>
+<span class="fc" id="L25">        customer.setName(document.getName());</span>
+<span class="fc" id="L26">        customer.setType(CustomerType.valueOf(document.getType()));</span>
+<span class="fc" id="L27">        customer.setProfile(CustomerProfile.valueOf(document.getProfile()));</span>
+<span class="fc" id="L28">        customer.setClosedAt(document.getClosedAt());</span>
+<span class="fc" id="L29">        return customer;</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

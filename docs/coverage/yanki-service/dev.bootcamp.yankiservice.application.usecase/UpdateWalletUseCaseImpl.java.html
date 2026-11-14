@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UpdateWalletUseCaseImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">yanki-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.yankiservice.application.usecase</a> &gt; <span class="el_source">UpdateWalletUseCaseImpl.java</span></div><h1>UpdateWalletUseCaseImpl.java</h1><pre class="source lang-java linenums">package dev.bootcamp.yankiservice.application.usecase;
+
+import dev.bootcamp.yankiservice.application.port.WalletEventPublisher;
+import dev.bootcamp.yankiservice.application.port.WalletRepository;
+import dev.bootcamp.yankiservice.application.port.YankiPaymentRepository;
+import dev.bootcamp.yankiservice.domain.exception.BusinessRuleException;
+import dev.bootcamp.yankiservice.domain.exception.NotFoundException;
+import dev.bootcamp.yankiservice.domain.model.payment.PaymentStatus;
+import dev.bootcamp.yankiservice.domain.model.wallet.Wallet;
+import dev.bootcamp.yankiservice.domain.model.wallet.WalletStatus;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+
+/**
+ * Implementación de {@link UpdateWalletUseCase}.
+ */
+@RequiredArgsConstructor
+public class UpdateWalletUseCaseImpl implements UpdateWalletUseCase {
+    private final WalletRepository walletRepository;
+    private final YankiPaymentRepository paymentRepository;
+    private final WalletEventPublisher walletEventPublisher;
+
+    @Override
+    public Single&lt;Wallet&gt; update(String walletId, String imei, String email) {
+<span class="fc" id="L26">        return activeWallet(walletId)</span>
+<span class="fc" id="L27">                .map(wallet -&gt; wallet.withContact(imei, email))</span>
+<span class="fc" id="L28">                .flatMap(updated -&gt; walletRepository</span>
+<span class="fc" id="L29">                        .updateContact(walletId, updated.getImei(), updated.getEmail())</span>
+<span class="fc" id="L30">                        .andThen(activeWallet(walletId)));</span>
+    }
+
+    @Override
+    public Completable close(String walletId) {
+<span class="fc" id="L35">        return activeWallet(walletId)</span>
+<span class="fc" id="L36">                .flatMap(wallet -&gt; {</span>
+<span class="fc" id="L37">                    wallet.validateClosing();</span>
+<span class="fc" id="L38">                    return paymentRepository.findByWalletId(walletId)</span>
+<span class="pc bpc" id="L39" title="1 of 2 branches missed.">                            .any(payment -&gt; payment.getStatus() == PaymentStatus.PENDING)</span>
+<span class="fc bfc" id="L40" title="All 2 branches covered.">                            .flatMap(pending -&gt; pending</span>
+<span class="fc" id="L41">                                    ? Single.&lt;Wallet&gt;error(new BusinessRuleException(</span>
+                                            &quot;El monedero tiene pagos pendientes; intente en unos&quot;
+                                                    + &quot; segundos&quot;))
+<span class="fc" id="L44">                                    : Single.just(wallet));</span>
+                })
+<span class="fc" id="L46">                .flatMap(wallet -&gt; walletRepository.close(walletId, wallet.getBalance())</span>
+<span class="fc bfc" id="L47" title="All 2 branches covered.">                        .flatMap(closed -&gt; closed</span>
+<span class="fc" id="L48">                                ? Single.just(wallet)</span>
+<span class="fc" id="L49">                                : Single.&lt;Wallet&gt;error(new BusinessRuleException(</span>
+                                        &quot;El monedero cambió mientras se daba de baja; intente&quot;
+                                                + &quot; de nuevo&quot;))))
+<span class="fc" id="L52">                .flatMapCompletable(wallet -&gt; {</span>
+<span class="fc" id="L53">                    wallet.setStatus(WalletStatus.CLOSED);</span>
+<span class="fc" id="L54">                    return walletEventPublisher.publishWalletClosed(wallet);</span>
+                });
+    }
+
+    private Single&lt;Wallet&gt; activeWallet(String walletId) {
+<span class="fc" id="L59">        return walletRepository.findById(walletId)</span>
+<span class="fc bfc" id="L60" title="All 2 branches covered.">                .filter(wallet -&gt; !wallet.isClosed())</span>
+<span class="fc" id="L61">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(&quot;El monedero no existe&quot;)));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

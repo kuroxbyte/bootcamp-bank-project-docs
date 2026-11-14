@@ -2,10 +2,12 @@
 
 import dev.bootcamp.yankiservice.application.usecase.CreateWalletUseCase;
 import dev.bootcamp.yankiservice.application.usecase.GetWalletUseCase;
+import dev.bootcamp.yankiservice.application.usecase.UpdateWalletUseCase;
 import dev.bootcamp.yankiservice.domain.model.wallet.DocumentType;
 import dev.bootcamp.yankiservice.infrastructure.web.api.WalletsApi;
 import dev.bootcamp.yankiservice.infrastructure.web.dto.WalletRequestDto;
 import dev.bootcamp.yankiservice.infrastructure.web.dto.WalletResponseDto;
+import dev.bootcamp.yankiservice.infrastructure.web.dto.WalletUpdateRequestDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -17,38 +19,61 @@ import reactor.core.publisher.Mono;
 /**
  * Endpoints de monederos definidos en el contrato OpenAPI.
  */
-<span class="fc" id="L20">@Slf4j</span>
+<span class="fc" id="L22">@Slf4j</span>
 @RestController
 @RequiredArgsConstructor
 public class WalletController implements WalletsApi {
 
     private final CreateWalletUseCase createWalletUseCase;
     private final GetWalletUseCase getWalletUseCase;
+    private final UpdateWalletUseCase updateWalletUseCase;
 
     @Override
     public Mono&lt;ResponseEntity&lt;WalletResponseDto&gt;&gt; createWallet(
             Mono&lt;WalletRequestDto&gt; walletRequestDto,
             ServerWebExchange exchange) {
-<span class="fc" id="L32">        return walletRequestDto</span>
-<span class="fc" id="L33">                .flatMap(request -&gt; Mono.from(createWalletUseCase</span>
-<span class="fc" id="L34">                        .execute(</span>
-<span class="fc" id="L35">                                DocumentType.valueOf(request.getDocumentType().getValue()),</span>
-<span class="fc" id="L36">                                request.getDocumentNumber(),</span>
-<span class="fc" id="L37">                                request.getPhone(),</span>
-<span class="fc" id="L38">                                request.getImei(),</span>
-<span class="fc" id="L39">                                request.getEmail())</span>
-<span class="fc" id="L40">                        .toFlowable()))</span>
-<span class="fc" id="L41">                .doOnNext(wallet -&gt; log.info(&quot;Wallet created walletId={}&quot;, wallet.getId()))</span>
-<span class="fc" id="L42">                .map(wallet -&gt; ResponseEntity.status(HttpStatus.CREATED)</span>
-<span class="fc" id="L43">                        .body(YankiWebMapper.toDto(wallet)));</span>
+<span class="fc" id="L35">        return walletRequestDto</span>
+<span class="fc" id="L36">                .flatMap(request -&gt; Mono.from(createWalletUseCase</span>
+<span class="fc" id="L37">                        .execute(</span>
+<span class="fc" id="L38">                                DocumentType.valueOf(request.getDocumentType().getValue()),</span>
+<span class="fc" id="L39">                                request.getDocumentNumber(),</span>
+<span class="fc" id="L40">                                request.getPhone(),</span>
+<span class="fc" id="L41">                                request.getImei(),</span>
+<span class="fc" id="L42">                                request.getEmail())</span>
+<span class="fc" id="L43">                        .toFlowable()))</span>
+<span class="fc" id="L44">                .doOnNext(wallet -&gt; log.info(&quot;Wallet created walletId={}&quot;, wallet.getId()))</span>
+<span class="fc" id="L45">                .map(wallet -&gt; ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="fc" id="L46">                        .body(YankiWebMapper.toDto(wallet)));</span>
     }
 
     @Override
     public Mono&lt;ResponseEntity&lt;WalletResponseDto&gt;&gt; getWallet(
             String xwalletId,
             ServerWebExchange exchange) {
-<span class="fc" id="L50">        return Mono.from(getWalletUseCase.findWallet(xwalletId).toFlowable())</span>
-<span class="fc" id="L51">                .map(wallet -&gt; ResponseEntity.ok(YankiWebMapper.toDto(wallet)));</span>
+<span class="fc" id="L53">        return Mono.from(getWalletUseCase.findWallet(xwalletId).toFlowable())</span>
+<span class="fc" id="L54">                .map(wallet -&gt; ResponseEntity.ok(YankiWebMapper.toDto(wallet)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;WalletResponseDto&gt;&gt; updateWallet(
+            String walletId,
+            Mono&lt;WalletUpdateRequestDto&gt; walletUpdateRequestDto,
+            ServerWebExchange exchange) {
+<span class="fc" id="L62">        return walletUpdateRequestDto</span>
+<span class="fc" id="L63">                .flatMap(request -&gt; Mono.from(updateWalletUseCase</span>
+<span class="fc" id="L64">                        .update(walletId, request.getImei(), request.getEmail())</span>
+<span class="fc" id="L65">                        .toFlowable()))</span>
+<span class="fc" id="L66">                .doOnNext(wallet -&gt; log.info(&quot;Wallet updated walletId={}&quot;, walletId))</span>
+<span class="fc" id="L67">                .map(wallet -&gt; ResponseEntity.ok(YankiWebMapper.toDto(wallet)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;Void&gt;&gt; deleteWallet(String walletId, ServerWebExchange exchange) {
+<span class="fc" id="L72">        return Mono.from(updateWalletUseCase.close(walletId).toFlowable())</span>
+<span class="fc" id="L73">                .then(Mono.fromCallable(() -&gt; {</span>
+<span class="fc" id="L74">                    log.info(&quot;Wallet closed walletId={}&quot;, walletId);</span>
+<span class="fc" id="L75">                    return ResponseEntity.noContent().&lt;Void&gt;build();</span>
+                }));
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

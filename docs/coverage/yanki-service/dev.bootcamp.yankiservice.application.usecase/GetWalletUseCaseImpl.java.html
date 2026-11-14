@@ -23,26 +23,27 @@ public class GetWalletUseCaseImpl implements GetWalletUseCase {
     @Override
     public Single&lt;Wallet&gt; findWallet(String walletId) {
 <span class="fc" id="L25">        return walletRepository.findById(walletId)</span>
-<span class="fc" id="L26">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(&quot;El monedero no existe&quot;)));</span>
+<span class="pc bpc" id="L26" title="1 of 2 branches missed.">                .filter(wallet -&gt; !wallet.isClosed())</span>
+<span class="fc" id="L27">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(&quot;El monedero no existe&quot;)));</span>
     }
 
     @Override
     public Flowable&lt;YankiPayment&gt; findPayments(String walletId) {
-<span class="fc" id="L31">        return paymentRepository.findByWalletId(walletId);</span>
+<span class="fc" id="L32">        return paymentRepository.findByWalletId(walletId);</span>
     }
 
     @Override
     public Single&lt;YankiPayment&gt; findPayment(String walletId, String paymentId) {
-<span class="fc" id="L36">        return paymentRepository.findById(paymentId)</span>
-<span class="fc bfc" id="L37" title="All 2 branches covered.">                .filter(payment -&gt; payment.getSourceWalletId().equals(walletId)</span>
-<span class="fc bfc" id="L38" title="All 2 branches covered.">                        || payment.getTargetWalletId().equals(walletId))</span>
-<span class="fc" id="L39">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(</span>
+<span class="fc" id="L37">        return paymentRepository.findById(paymentId)</span>
+<span class="fc bfc" id="L38" title="All 2 branches covered.">                .filter(payment -&gt; payment.getSourceWalletId().equals(walletId)</span>
+<span class="fc bfc" id="L39" title="All 2 branches covered.">                        || payment.getTargetWalletId().equals(walletId))</span>
+<span class="fc" id="L40">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(</span>
                         &quot;El pago no existe o no es del monedero&quot;)));
     }
 
     @Override
     public Flowable&lt;DebitCardLink&gt; findDebitCardLinks(String walletId) {
-<span class="fc" id="L45">        return linkRepository.findByWalletId(walletId);</span>
+<span class="fc" id="L46">        return linkRepository.findByWalletId(walletId);</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

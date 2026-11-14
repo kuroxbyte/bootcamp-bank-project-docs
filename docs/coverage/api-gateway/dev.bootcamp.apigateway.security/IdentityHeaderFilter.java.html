@@ -13,56 +13,62 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 
 /**
- * Envía a los microservicios la identidad tomada del token: {@code X-Customer-Id} para un token
- * de cliente y {@code X-Wallet-Id} para uno de monedero Yanki (rol {@code WALLET}), con el claim
- * {@code sub}.
+ * Envía a los microservicios la identidad tomada del token, con el claim {@code sub}:
+ * {@code X-Customer-Id} para un token de cliente, {@code X-Wallet-Id} para uno de monedero Yanki
+ * (rol {@code WALLET}) y {@code X-Admin-Id} para uno de empleado (rol {@code ADMIN}).
  *
- * &lt;p&gt;Siempre elimina los dos headers que manda el cliente antes de poner el que corresponde. Así
- * nadie puede operar con los productos o el monedero de otro.
+ * &lt;p&gt;Siempre elimina los tres headers que manda el cliente antes de poner el que corresponde. Así
+ * nadie puede operar con los productos o el monedero de otro, ni hacerse pasar por empleado.
  */
 @Component
 <span class="fc" id="L24">public class IdentityHeaderFilter implements GlobalFilter, Ordered {</span>
 
     static final String CUSTOMER_ID_HEADER = &quot;X-Customer-Id&quot;;
     static final String WALLET_ID_HEADER = &quot;X-Wallet-Id&quot;;
+    static final String ADMIN_ID_HEADER = &quot;X-Admin-Id&quot;;
 
     @Override
     public Mono&lt;Void&gt; filter(ServerWebExchange exchange, GatewayFilterChain chain) {
-<span class="fc" id="L31">        ServerWebExchange withoutIdentity = withIdentity(exchange, null, null);</span>
-<span class="fc" id="L32">        return exchange.getPrincipal()</span>
-<span class="fc" id="L33">                .filter(JwtAuthenticationToken.class::isInstance)</span>
-<span class="fc" id="L34">                .map(principal -&gt; ((JwtAuthenticationToken) principal).getToken())</span>
-<span class="fc" id="L35">                .map(jwt -&gt; withIdentity(exchange, headerFor(jwt), jwt.getSubject()))</span>
-<span class="fc" id="L36">                .defaultIfEmpty(withoutIdentity)</span>
-<span class="fc" id="L37">                .flatMap(chain::filter);</span>
+<span class="fc" id="L32">        ServerWebExchange withoutIdentity = withIdentity(exchange, null, null);</span>
+<span class="fc" id="L33">        return exchange.getPrincipal()</span>
+<span class="fc" id="L34">                .filter(JwtAuthenticationToken.class::isInstance)</span>
+<span class="fc" id="L35">                .map(principal -&gt; ((JwtAuthenticationToken) principal).getToken())</span>
+<span class="fc" id="L36">                .map(jwt -&gt; withIdentity(exchange, headerFor(jwt), jwt.getSubject()))</span>
+<span class="fc" id="L37">                .defaultIfEmpty(withoutIdentity)</span>
+<span class="fc" id="L38">                .flatMap(chain::filter);</span>
     }
 
     @Override
     public int getOrder() {
-<span class="fc" id="L42">        return Ordered.HIGHEST_PRECEDENCE;</span>
+<span class="fc" id="L43">        return Ordered.HIGHEST_PRECEDENCE;</span>
     }
 
     private static String headerFor(Jwt jwt) {
-<span class="fc" id="L46">        List&lt;String&gt; roles = jwt.getClaimAsStringList(SecurityConfig.ROLES_CLAIM);</span>
-<span class="fc bfc" id="L47" title="All 4 branches covered.">        return roles != null &amp;&amp; roles.contains(SecurityConfig.WALLET)</span>
-<span class="fc" id="L48">                ? WALLET_ID_HEADER</span>
-<span class="fc" id="L49">                : CUSTOMER_ID_HEADER;</span>
+<span class="fc" id="L47">        List&lt;String&gt; roles = jwt.getClaimAsStringList(SecurityConfig.ROLES_CLAIM);</span>
+<span class="fc bfc" id="L48" title="All 2 branches covered.">        if (roles == null) {</span>
+<span class="fc" id="L49">            return CUSTOMER_ID_HEADER;</span>
+        }
+<span class="fc bfc" id="L51" title="All 2 branches covered.">        if (roles.contains(SecurityConfig.ADMIN)) {</span>
+<span class="fc" id="L52">            return ADMIN_ID_HEADER;</span>
+        }
+<span class="fc bfc" id="L54" title="All 2 branches covered.">        return roles.contains(SecurityConfig.WALLET) ? WALLET_ID_HEADER : CUSTOMER_ID_HEADER;</span>
     }
 
     private static ServerWebExchange withIdentity(
             ServerWebExchange exchange,
             String header,
             String id) {
-<span class="fc" id="L56">        ServerHttpRequest request = exchange.getRequest().mutate()</span>
-<span class="fc" id="L57">                .headers(headers -&gt; {</span>
-<span class="fc" id="L58">                    headers.remove(CUSTOMER_ID_HEADER);</span>
-<span class="fc" id="L59">                    headers.remove(WALLET_ID_HEADER);</span>
-<span class="fc bfc" id="L60" title="All 2 branches covered.">                    if (header != null) {</span>
-<span class="fc" id="L61">                        headers.set(header, id);</span>
+<span class="fc" id="L61">        ServerHttpRequest request = exchange.getRequest().mutate()</span>
+<span class="fc" id="L62">                .headers(headers -&gt; {</span>
+<span class="fc" id="L63">                    headers.remove(CUSTOMER_ID_HEADER);</span>
+<span class="fc" id="L64">                    headers.remove(WALLET_ID_HEADER);</span>
+<span class="fc" id="L65">                    headers.remove(ADMIN_ID_HEADER);</span>
+<span class="fc bfc" id="L66" title="All 2 branches covered.">                    if (header != null) {</span>
+<span class="fc" id="L67">                        headers.set(header, id);</span>
                     }
-<span class="fc" id="L63">                })</span>
-<span class="fc" id="L64">                .build();</span>
-<span class="fc" id="L65">        return exchange.mutate().request(request).build();</span>
+<span class="fc" id="L69">                })</span>
+<span class="fc" id="L70">                .build();</span>
+<span class="fc" id="L71">        return exchange.mutate().request(request).build();</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

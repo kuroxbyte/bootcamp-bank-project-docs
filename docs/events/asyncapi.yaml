@@ -18,14 +18,26 @@ channels:
     messages:
       customerCreated:
         $ref: '#/components/messages/CustomerCreated'
+      customerUpdated:
+        $ref: '#/components/messages/CustomerUpdated'
+      customerClosed:
+        $ref: '#/components/messages/CustomerClosed'
   creditEvents:
     address: credit-events
-    description: Productos de crédito otorgados. Dueño y productor, credit-service (3 particiones).
+    description: Productos de crédito otorgados, modificados o dados de baja. Dueño y productor, credit-service (3 particiones).
     messages:
       creditGranted:
         $ref: '#/components/messages/CreditGranted'
       creditCardGranted:
         $ref: '#/components/messages/CreditCardGranted'
+      creditUpdated:
+        $ref: '#/components/messages/CreditUpdated'
+      creditCardUpdated:
+        $ref: '#/components/messages/CreditCardUpdated'
+      creditClosed:
+        $ref: '#/components/messages/CreditClosed'
+      creditCardClosed:
+        $ref: '#/components/messages/CreditCardClosed'
   transactionEvents:
     address: transaction-events
     description: Pagos y consumos de productos de crédito. Dueño y productor, transaction-service (3 particiones).
@@ -38,12 +50,14 @@ channels:
         $ref: '#/components/messages/CreditCardChargeRegistered'
   debitCardEvents:
     address: debit-card-events
-    description: Tarjetas de débito emitidas o con cuentas cambiadas. Dueño y productor, account-service (3 particiones).
+    description: Tarjetas de débito emitidas, con cuentas cambiadas o dadas de baja. Dueño y productor, account-service (3 particiones).
     messages:
       debitCardIssued:
         $ref: '#/components/messages/DebitCardIssued'
       debitCardAccountsUpdated:
         $ref: '#/components/messages/DebitCardAccountsUpdated'
+      debitCardClosed:
+        $ref: '#/components/messages/DebitCardClosed'
   debtEvents:
     address: debt-events
     description: Cambios en el estado de deuda de los clientes. Dueño y productor, debt-service (3 particiones).
@@ -52,10 +66,12 @@ channels:
         $ref: '#/components/messages/CustomerDebtStatusChanged'
   yankiEvents:
     address: yanki-events
-    description: Monederos Yanki creados. Dueño y productor, yanki-service (3 particiones).
+    description: Monederos Yanki creados o dados de baja. Dueño y productor, yanki-service (3 particiones).
     messages:
       walletCreated:
         $ref: '#/components/messages/WalletCreated'
+      walletClosed:
+        $ref: '#/components/messages/WalletClosed'
   yankiOperations:
     address: yanki-operations
     description: |
@@ -79,28 +95,36 @@ operations:
     action: send
     channel:
       $ref: '#/channels/customerEvents'
-    summary: customer-service publica un CustomerCreated después de guardar cada cliente.
+    summary: customer-service publica CustomerCreated, CustomerUpdated o CustomerClosed después de guardar el cliente.
     messages:
       - $ref: '#/channels/customerEvents/messages/customerCreated'
+      - $ref: '#/channels/customerEvents/messages/customerUpdated'
+      - $ref: '#/channels/customerEvents/messages/customerClosed'
   consumeCustomerCreated:
     action: receive
     channel:
       $ref: '#/channels/customerEvents'
     summary: |
-      auth-service (grupo auth-service, desde el inicio del tópico) guarda su copia del cliente
-      para validar el registro de usuarios. Procesar dos veces el mismo evento no duplica nada.
+      auth-service (grupo auth-service, desde el inicio del tópico) guarda o reemplaza su copia del
+      cliente para validar el registro de usuarios; con CustomerClosed elimina el usuario y la
+      copia. Procesar dos veces el mismo evento no duplica nada.
     messages:
       - $ref: '#/channels/customerEvents/messages/customerCreated'
+      - $ref: '#/channels/customerEvents/messages/customerUpdated'
+      - $ref: '#/channels/customerEvents/messages/customerClosed'
   publishCreditEvents:
     action: send
     channel:
       $ref: '#/channels/creditEvents'
-    summary: credit-service publica cada crédito o tarjeta después de otorgarlo.
+    summary: credit-service publica el estado completo de cada crédito o tarjeta al otorgarlo, modificarlo o darlo de baja.
   consumeCreditEvents:
     action: receive
     channel:
       $ref: '#/channels/creditEvents'
-    summary: debt-service (grupo debt-service) registra los productos de crédito de cada cliente.
+    summary: |
+      debt-service (grupo debt-service) registra los productos de crédito de cada cliente; un
+      *Updated reemplaza la copia y recalcula la deuda. Las bajas se ignoran (solo se da de baja un
+      producto sin deuda).
   publishTransactionEvents:
     action: send
     channel:
@@ -115,14 +139,15 @@ operations:
     action: send
     channel:
       $ref: '#/channels/debitCardEvents'
-    summary: account-service publica el estado completo de la tarjeta al emitirla, asociar una cuenta o cambiar la principal.
+    summary: account-service publica el estado completo de la tarjeta al emitirla, asociar una cuenta, cambiar la principal o darla de baja.
   consumeDebitCardEvents:
     action: receive
     channel:
       $ref: '#/channels/debitCardEvents'
     summary: |
       transaction-service (grupo transaction-service) guarda su copia de cada tarjeta (dueño y cuenta
-      principal) en MongoDB con caché en Redis, para procesar los pagos con tarjeta sin REST.
+      principal) en MongoDB con caché en Redis, para procesar los pagos con tarjeta sin REST; con
+      DebitCardClosed la elimina.
   publishDebtEvents:
     action: send
     channel:
@@ -141,14 +166,15 @@ operations:
     action: send
     channel:
       $ref: '#/channels/yankiEvents'
-    summary: yanki-service publica un WalletCreated después de guardar cada monedero.
+    summary: yanki-service publica WalletCreated al crear un monedero y WalletClosed al darlo de baja.
   consumeWalletCreated:
     action: receive
     channel:
       $ref: '#/channels/yankiEvents'
     summary: |
       auth-service (grupo auth-service, desde el inicio del tópico) guarda su copia del monedero
-      (id y celular) en MongoDB con caché en Redis, para validar el registro del acceso al monedero.
+      (id y celular) en MongoDB con caché en Redis, para validar el registro del acceso al monedero;
+      con WalletClosed elimina el acceso y la copia.
   publishYankiOperations:
     action: send
     channel:
@@ -184,7 +210,8 @@ operations:
       $ref: '#/channels/debitCardEvents'
     summary: |
       yanki-service (grupo yanki-service) guarda su copia de cada tarjeta (dueño y cuenta principal)
-      en MongoDB con caché en Redis, para asociarla a un monedero y cargar o abonar su cuenta.
+      en MongoDB con caché en Redis, para asociarla a un monedero y cargar o abonar su cuenta; con
+      DebitCardClosed la elimina y la quita del monedero que la tenga.
 components:
   messages:
     CustomerCreated:
@@ -645,6 +672,278 @@ components:
           reason:
             type: string
             description: Motivo del rechazo (cuenta inexistente, saldo insuficiente, límite de movimientos...)
+          occurredAt:
+            type: string
+            format: date-time
+    CustomerUpdated:
+      name: CustomerUpdated
+      summary: Se modificó el nombre o el perfil del cliente; trae el tipo y el perfil actuales.
+      contentType: application/json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id del cliente
+      payload:
+        type: object
+        required: [eventType, customerId, type, profile, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: CustomerUpdated
+          customerId:
+            type: string
+            example: 6650f1c2a4b5c6d7e8f90123
+          type:
+            type: string
+            enum: [PERSONAL, BUSINESS]
+          profile:
+            type: string
+            enum: [STANDARD, VIP, PYME]
+          occurredAt:
+            type: string
+            format: date-time
+            example: '2026-11-15T10:00:00Z'
+    CustomerClosed:
+      name: CustomerClosed
+      summary: Se dio de baja al cliente (baja lógica); auth-service elimina su usuario.
+      contentType: application/json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id del cliente
+      payload:
+        type: object
+        required: [eventType, customerId, type, profile, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: CustomerClosed
+          customerId:
+            type: string
+            example: 6650f1c2a4b5c6d7e8f90123
+          type:
+            type: string
+            enum: [PERSONAL, BUSINESS]
+          profile:
+            type: string
+            enum: [STANDARD, VIP, PYME]
+          occurredAt:
+            type: string
+            format: date-time
+            example: '2026-11-15T10:00:00Z'
+    CreditUpdated:
+      name: CreditUpdated
+      summary: Se cambió la fecha de vencimiento del crédito; trae su estado completo.
+      contentType: application/json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id del cliente
+      payload:
+        type: object
+        required: [eventType, eventId, creditId, customerId, creditType, amount, dueDate, grantedAt, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: CreditUpdated
+          eventId:
+            type: string
+            format: uuid
+            description: Id único del evento; permite descartar los repetidos
+          creditId:
+            type: string
+          customerId:
+            type: string
+          creditType:
+            type: string
+            enum: [PERSONAL, BUSINESS]
+          amount:
+            type: number
+            example: 10000.00
+          dueDate:
+            type: string
+            format: date
+          grantedAt:
+            type: string
+            format: date
+          occurredAt:
+            type: string
+            format: date-time
+    CreditClosed:
+      name: CreditClosed
+      summary: Se dio de baja el crédito, ya pagado; trae su último estado.
+      contentType: application/json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id del cliente
+      payload:
+        type: object
+        required: [eventType, eventId, creditId, customerId, creditType, amount, dueDate, grantedAt, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: CreditClosed
+          eventId:
+            type: string
+            format: uuid
+            description: Id único del evento; permite descartar los repetidos
+          creditId:
+            type: string
+          customerId:
+            type: string
+          creditType:
+            type: string
+            enum: [PERSONAL, BUSINESS]
+          amount:
+            type: number
+            example: 10000.00
+          dueDate:
+            type: string
+            format: date
+          grantedAt:
+            type: string
+            format: date
+          occurredAt:
+            type: string
+            format: date-time
+    CreditCardUpdated:
+      name: CreditCardUpdated
+      summary: Se cambiaron el límite o el día de pago de la tarjeta; trae su estado completo.
+      contentType: application/json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id del cliente
+      payload:
+        type: object
+        required: [eventType, eventId, creditCardId, customerId, creditLimit, paymentDueDay, grantedAt, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: CreditCardUpdated
+          eventId:
+            type: string
+            format: uuid
+            description: Id único del evento; permite descartar los repetidos
+          creditCardId:
+            type: string
+          customerId:
+            type: string
+          creditLimit:
+            type: number
+          paymentDueDay:
+            type: integer
+            minimum: 1
+            maximum: 28
+          grantedAt:
+            type: string
+            format: date
+          occurredAt:
+            type: string
+            format: date-time
+    CreditCardClosed:
+      name: CreditCardClosed
+      summary: Se dio de baja la tarjeta, sin deuda; trae su último estado.
+      contentType: application/json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id del cliente
+      payload:
+        type: object
+        required: [eventType, eventId, creditCardId, customerId, creditLimit, paymentDueDay, grantedAt, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: CreditCardClosed
+          eventId:
+            type: string
+            format: uuid
+            description: Id único del evento; permite descartar los repetidos
+          creditCardId:
+            type: string
+          customerId:
+            type: string
+          creditLimit:
+            type: number
+          paymentDueDay:
+            type: integer
+            minimum: 1
+            maximum: 28
+          grantedAt:
+            type: string
+            format: date
+          occurredAt:
+            type: string
+            format: date-time
+    DebitCardClosed:
+      name: DebitCardClosed
+      summary: Se dio de baja la tarjeta de débito; sus cuentas quedan libres.
+      contentType: application/json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id del cliente
+      payload:
+        type: object
+        required: [eventType, eventId, debitCardId, customerId, primaryAccountId, accountIds, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: DebitCardClosed
+          eventId:
+            type: string
+            format: uuid
+            description: Id único del evento; permite descartar los repetidos
+          debitCardId:
+            type: string
+          customerId:
+            type: string
+          primaryAccountId:
+            type: string
+            description: Cuenta de la que salen los pagos con la tarjeta
+          accountIds:
+            type: array
+            description: Cuentas asociadas, empezando por la principal (cada cuenta, en una sola tarjeta)
+            items:
+              type: string
+          occurredAt:
+            type: string
+            format: date-time
+    WalletClosed:
+      name: WalletClosed
+      summary: El dueño dio de baja el monedero (estado CLOSED); auth-service elimina su acceso.
+      contentType: application/json
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: Id del monedero
+      payload:
+        type: object
+        required: [eventType, eventId, walletId, phone, occurredAt]
+        properties:
+          eventType:
+            type: string
+            const: WalletClosed
+          eventId:
+            type: string
+            format: uuid
+            description: Id único del evento; permite descartar los repetidos
+          walletId:
+            type: string
+          phone:
+            type: string
+            description: Celular del monedero (9 dígitos); con él inicia sesión su dueño
+            example: '987654321'
           occurredAt:
             type: string
             format: date-time

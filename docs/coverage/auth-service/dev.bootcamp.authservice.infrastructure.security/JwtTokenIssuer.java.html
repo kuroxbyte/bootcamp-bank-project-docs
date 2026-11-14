@@ -19,9 +19,9 @@ import java.util.List;
 /**
  * Implementa el puerto {@link TokenIssuer} con JWT firmados con RS256.
  *
- * &lt;p&gt;Claims: {@code iss}, {@code sub} (id del cliente o del monedero), {@code preferred_username}
- * (nombre de usuario o celular), {@code roles} ({@code CUSTOMER} o {@code WALLET}), {@code iat} y
- * {@code exp}.
+ * &lt;p&gt;Claims: {@code iss}, {@code sub} (id del cliente o del monedero, o usuario del empleado),
+ * {@code preferred_username} (nombre de usuario o celular), {@code roles} ({@code CUSTOMER},
+ * {@code WALLET} o {@code ADMIN}), {@code iat} y {@code exp}.
  */
 @Component
 public class JwtTokenIssuer implements TokenIssuer {

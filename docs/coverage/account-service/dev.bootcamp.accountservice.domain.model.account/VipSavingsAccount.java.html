@@ -6,6 +6,7 @@ import dev.bootcamp.accountservice.domain.model.customer.CustomerProfile;
 import lombok.Getter;
 
 import java.math.BigDecimal;
+import java.util.Set;
 
 /**
  * Ahorro VIP: cuenta de ahorro que requiere un monto mínimo de promedio diario cada mes. El
@@ -26,15 +27,27 @@ public class VipSavingsAccount extends SavingsAccount {
             OpeningAmount opening,
             int maxMonthlyMovements,
             BigDecimal minimumDailyAverage) {
-<span class="fc" id="L29">        super(customer, opening, maxMonthlyMovements);</span>
-<span class="fc bfc" id="L30" title="All 2 branches covered.">        if (customer.profile() != CustomerProfile.VIP) {</span>
-<span class="fc" id="L31">            throw new BusinessRuleException(&quot;La cuenta de ahorro VIP es solo para clientes VIP&quot;);</span>
+<span class="fc" id="L30">        super(customer, opening, maxMonthlyMovements);</span>
+<span class="fc bfc" id="L31" title="All 2 branches covered.">        if (customer.profile() != CustomerProfile.VIP) {</span>
+<span class="fc" id="L32">            throw new BusinessRuleException(&quot;La cuenta de ahorro VIP es solo para clientes VIP&quot;);</span>
         }
-<span class="fc bfc" id="L33" title="All 4 branches covered.">        if (minimumDailyAverage == null || minimumDailyAverage.signum() &lt; 0) {</span>
-<span class="fc" id="L34">            throw new BusinessRuleException(</span>
+<span class="fc bfc" id="L34" title="All 4 branches covered.">        if (minimumDailyAverage == null || minimumDailyAverage.signum() &lt; 0) {</span>
+<span class="fc" id="L35">            throw new BusinessRuleException(</span>
                     &quot;El monto mínimo de promedio diario no puede ser negativo&quot;);
         }
-<span class="fc" id="L37">        this.minimumDailyAverage = minimumDailyAverage;</span>
-<span class="fc" id="L38">    }</span>
+<span class="fc" id="L38">        this.minimumDailyAverage = minimumDailyAverage;</span>
+<span class="fc" id="L39">    }</span>
+
+    @Override
+    public VipSavingsAccount withChanges(AccountChanges changes) {
+<span class="fc" id="L43">        changes.allowOnly(</span>
+                &quot;de ahorro VIP&quot;,
+<span class="fc" id="L45">                Set.of(&quot;maxMonthlyMovements&quot;, &quot;minimumDailyAverage&quot;));</span>
+<span class="fc" id="L46">        return keepStateIn(new VipSavingsAccount(</span>
+<span class="fc" id="L47">                getCustomer(),</span>
+<span class="fc" id="L48">                getOpening(),</span>
+<span class="fc" id="L49">                AccountChanges.required(changes.maxMonthlyMovements(), &quot;maxMonthlyMovements&quot;),</span>
+<span class="fc" id="L50">                changes.minimumDailyAverage()));</span>
+    }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

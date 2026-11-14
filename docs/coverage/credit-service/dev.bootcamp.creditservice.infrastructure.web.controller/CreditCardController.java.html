@@ -2,9 +2,11 @@
 
 import dev.bootcamp.creditservice.application.usecase.CreateCreditCardUseCase;
 import dev.bootcamp.creditservice.application.usecase.GetCreditCardsUseCase;
+import dev.bootcamp.creditservice.application.usecase.UpdateCreditCardUseCase;
 import dev.bootcamp.creditservice.infrastructure.web.api.CreditCardsApi;
 import dev.bootcamp.creditservice.infrastructure.web.dto.CreditCardRequestDto;
 import dev.bootcamp.creditservice.infrastructure.web.dto.CreditCardResponseDto;
+import dev.bootcamp.creditservice.infrastructure.web.dto.CreditCardUpdateRequestDto;
 import dev.bootcamp.creditservice.infrastructure.web.mapper.CreditWebMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,67 +20,104 @@ import reactor.core.publisher.Mono;
 /**
  * Endpoints de tarjetas de crédito definidos en el contrato OpenAPI.
  */
-<span class="fc" id="L21">@Slf4j</span>
+<span class="fc" id="L23">@Slf4j</span>
 @RestController
 @RequiredArgsConstructor
 public class CreditCardController implements CreditCardsApi {
 
     private final CreateCreditCardUseCase createCreditCardUseCase;
     private final GetCreditCardsUseCase getCreditCardsUseCase;
+    private final UpdateCreditCardUseCase updateCreditCardUseCase;
 
     @Override
     public Mono&lt;ResponseEntity&lt;CreditCardResponseDto&gt;&gt; createCreditCard(
             String customerId,
             Mono&lt;CreditCardRequestDto&gt; creditCardRequestDto,
             ServerWebExchange exchange) {
-<span class="fc" id="L34">        return creditCardRequestDto</span>
-<span class="fc" id="L35">                .flatMap(</span>
+<span class="fc" id="L37">        return creditCardRequestDto</span>
+<span class="fc" id="L38">                .flatMap(</span>
                         request -&gt;
-<span class="fc" id="L37">                                Mono.from(</span>
+<span class="fc" id="L40">                                Mono.from(</span>
                                         createCreditCardUseCase
-<span class="fc" id="L39">                                                .execute(</span>
+<span class="fc" id="L42">                                                .execute(</span>
                                                         customerId,
-<span class="fc" id="L41">                                                        request.getCreditLimit(),</span>
-<span class="fc" id="L42">                                                        request.getPaymentDueDay())</span>
-<span class="fc" id="L43">                                                .toFlowable()))</span>
-<span class="fc" id="L44">                .doOnNext(</span>
+<span class="fc" id="L44">                                                        request.getCreditLimit(),</span>
+<span class="fc" id="L45">                                                        request.getPaymentDueDay())</span>
+<span class="fc" id="L46">                                                .toFlowable()))</span>
+<span class="fc" id="L47">                .doOnNext(</span>
                         card -&gt;
-<span class="fc" id="L46">                                log.info(</span>
+<span class="fc" id="L49">                                log.info(</span>
                                         &quot;Credit card granted creditCardId={} customerId={}&quot;,
-<span class="fc" id="L48">                                        card.getId(),</span>
+<span class="fc" id="L51">                                        card.getId(),</span>
                                         customerId))
-<span class="fc" id="L50">                .map(</span>
+<span class="fc" id="L53">                .map(</span>
                         card -&gt;
-<span class="fc" id="L52">                                ResponseEntity.status(HttpStatus.CREATED)</span>
-<span class="fc" id="L53">                                        .body(CreditWebMapper.toResponse(card)));</span>
+<span class="fc" id="L55">                                ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="fc" id="L56">                                        .body(CreditWebMapper.toResponse(card)));</span>
     }
 
     @Override
     public Mono&lt;ResponseEntity&lt;Flux&lt;CreditCardResponseDto&gt;&gt;&gt; listAllCreditCards(
             ServerWebExchange exchange) {
-<span class="fc" id="L59">        log.debug(&quot;Listing all credit cards for reports&quot;);</span>
-<span class="fc" id="L60">        return Mono.just(ResponseEntity.ok(</span>
-<span class="fc" id="L61">                Flux.from(getCreditCardsUseCase.findAll()).map(CreditWebMapper::toResponse)));</span>
+<span class="fc" id="L62">        log.debug(&quot;Listing all credit cards for reports&quot;);</span>
+<span class="fc" id="L63">        return Mono.just(ResponseEntity.ok(</span>
+<span class="fc" id="L64">                Flux.from(getCreditCardsUseCase.findAll()).map(CreditWebMapper::toResponse)));</span>
     }
 
     @Override
     public Mono&lt;ResponseEntity&lt;Flux&lt;CreditCardResponseDto&gt;&gt;&gt; listCreditCards(
             String customerId,
             ServerWebExchange exchange) {
-<span class="fc" id="L68">        log.debug(&quot;Listing credit cards customerId={}&quot;, customerId);</span>
-<span class="fc" id="L69">        Flux&lt;CreditCardResponseDto&gt; cards =</span>
-<span class="fc" id="L70">                Flux.from(getCreditCardsUseCase.findByCustomerId(customerId))</span>
-<span class="fc" id="L71">                        .map(CreditWebMapper::toResponse);</span>
-<span class="fc" id="L72">        return Mono.just(ResponseEntity.ok(cards));</span>
+<span class="fc" id="L71">        log.debug(&quot;Listing credit cards customerId={}&quot;, customerId);</span>
+<span class="fc" id="L72">        Flux&lt;CreditCardResponseDto&gt; cards =</span>
+<span class="fc" id="L73">                Flux.from(getCreditCardsUseCase.findByCustomerId(customerId))</span>
+<span class="fc" id="L74">                        .map(CreditWebMapper::toResponse);</span>
+<span class="fc" id="L75">        return Mono.just(ResponseEntity.ok(cards));</span>
     }
 
     @Override
     public Mono&lt;ResponseEntity&lt;CreditCardResponseDto&gt;&gt; getCreditCardById(
             String creditCardId,
             ServerWebExchange exchange) {
-<span class="fc" id="L79">        log.debug(&quot;Fetching credit card creditCardId={}&quot;, creditCardId);</span>
-<span class="fc" id="L80">        return Mono.from(getCreditCardsUseCase.findById(creditCardId).toFlowable())</span>
-<span class="pc" id="L81">                .map(card -&gt; ResponseEntity.ok(CreditWebMapper.toResponse(card)));</span>
+<span class="fc" id="L82">        log.debug(&quot;Fetching credit card creditCardId={}&quot;, creditCardId);</span>
+<span class="fc" id="L83">        return Mono.from(getCreditCardsUseCase.findById(creditCardId).toFlowable())</span>
+<span class="pc" id="L84">                .map(card -&gt; ResponseEntity.ok(CreditWebMapper.toResponse(card)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;CreditCardResponseDto&gt;&gt; updateCreditCard(
+            String creditCardId,
+            String adminId,
+            Mono&lt;CreditCardUpdateRequestDto&gt; creditCardUpdateRequestDto,
+            ServerWebExchange exchange) {
+<span class="fc" id="L93">        return creditCardUpdateRequestDto</span>
+<span class="fc" id="L94">                .flatMap(request -&gt; Mono.from(updateCreditCardUseCase</span>
+<span class="fc" id="L95">                        .update(</span>
+                                creditCardId,
+<span class="fc" id="L97">                                request.getCreditLimit(),</span>
+<span class="fc" id="L98">                                request.getPaymentDueDay())</span>
+<span class="fc" id="L99">                        .toFlowable()))</span>
+<span class="fc" id="L100">                .doOnNext(card -&gt; log.info(</span>
+                        &quot;Credit card updated creditCardId={} creditLimit={} adminId={}&quot;,
+                        creditCardId,
+<span class="fc" id="L103">                        card.getCreditLimit(),</span>
+                        adminId))
+<span class="fc" id="L105">                .map(card -&gt; ResponseEntity.ok(CreditWebMapper.toResponse(card)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;Void&gt;&gt; deleteCreditCard(
+            String creditCardId,
+            String adminId,
+            ServerWebExchange exchange) {
+<span class="fc" id="L113">        return Mono.from(updateCreditCardUseCase.close(creditCardId).toFlowable())</span>
+<span class="fc" id="L114">                .then(Mono.fromCallable(() -&gt; {</span>
+<span class="fc" id="L115">                    log.info(</span>
+                            &quot;Credit card closed creditCardId={} adminId={}&quot;,
+                            creditCardId,
+                            adminId);
+<span class="fc" id="L119">                    return ResponseEntity.noContent().&lt;Void&gt;build();</span>
+                }));
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

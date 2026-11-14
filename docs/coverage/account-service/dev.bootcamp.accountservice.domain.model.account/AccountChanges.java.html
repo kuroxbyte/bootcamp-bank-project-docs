@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AccountChanges.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">account-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.accountservice.domain.model.account</a> &gt; <span class="el_source">AccountChanges.java</span></div><h1>AccountChanges.java</h1><pre class="source lang-java linenums">package dev.bootcamp.accountservice.domain.model.account;
+
+import dev.bootcamp.accountservice.domain.exception.BusinessRuleException;
+
+import java.math.BigDecimal;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * Nuevos valores de las condiciones modificables de una cuenta ({@code PUT}). Cada tipo de cuenta
+ * usa solo los suyos y deben venir todos los obligatorios de su tipo; enviar el de otro tipo es un
+ * error (una lista vacía cuenta como no enviada).
+ *
+ * @param maintenanceFee      comisión de mantenimiento (corriente)
+ * @param holderIds           titulares (corriente)
+ * @param authorizedSignerIds firmantes autorizados (corriente)
+ * @param maxMonthlyMovements límite de movimientos mensuales (ahorro)
+ * @param minimumDailyAverage mínimo de promedio diario mensual (ahorro VIP)
+ * @param movementDayOfMonth  día del único movimiento del mes (plazo fijo)
+ */
+<span class="fc" id="L23">public record AccountChanges(</span>
+        BigDecimal maintenanceFee,
+        List&lt;String&gt; holderIds,
+        List&lt;String&gt; authorizedSignerIds,
+        Integer maxMonthlyMovements,
+        BigDecimal minimumDailyAverage,
+        Integer movementDayOfMonth) {
+
+    /**
+     * Verifica que solo vengan campos del tipo de cuenta.
+     *
+     * @param accountType nombre del tipo de cuenta, para el mensaje
+     * @param allowed     campos que admite el tipo
+     * @throws BusinessRuleException si viene un campo de otro tipo de cuenta
+     */
+    void allowOnly(String accountType, Set&lt;String&gt; allowed) {
+<span class="fc" id="L39">        Map&lt;String, Object&gt; fields = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L40">        fields.put(&quot;maintenanceFee&quot;, maintenanceFee);</span>
+<span class="fc" id="L41">        fields.put(&quot;holderIds&quot;, holderIds);</span>
+<span class="fc" id="L42">        fields.put(&quot;authorizedSignerIds&quot;, authorizedSignerIds);</span>
+<span class="fc" id="L43">        fields.put(&quot;maxMonthlyMovements&quot;, maxMonthlyMovements);</span>
+<span class="fc" id="L44">        fields.put(&quot;minimumDailyAverage&quot;, minimumDailyAverage);</span>
+<span class="fc" id="L45">        fields.put(&quot;movementDayOfMonth&quot;, movementDayOfMonth);</span>
+<span class="fc" id="L46">        fields.entrySet().stream()</span>
+<span class="fc bfc" id="L47" title="All 2 branches covered.">                .filter(field -&gt; isPresent(field.getValue())</span>
+<span class="fc bfc" id="L48" title="All 2 branches covered.">                        &amp;&amp; !allowed.contains(field.getKey()))</span>
+<span class="fc" id="L49">                .findFirst()</span>
+<span class="fc" id="L50">                .ifPresent(field -&gt; {</span>
+<span class="fc" id="L51">                    throw new BusinessRuleException(</span>
+<span class="fc" id="L52">                            &quot;El campo &quot; + field.getKey() + &quot; no aplica a una cuenta &quot;</span>
+                                    + accountType);
+                });
+<span class="fc" id="L55">    }</span>
+
+    // Una lista vacía cuenta como no enviada: el contrato OpenAPI la usa como valor por defecto.
+    private static boolean isPresent(Object value) {
+<span class="fc bfc" id="L59" title="All 6 branches covered.">        return value instanceof List&lt;?&gt; list ? !list.isEmpty() : value != null;</span>
+    }
+
+    /**
+     * Valor obligatorio de un campo entero.
+     *
+     * @throws BusinessRuleException si no viene
+     */
+    static int required(Integer value, String field) {
+<span class="fc bfc" id="L68" title="All 2 branches covered.">        if (value == null) {</span>
+<span class="fc" id="L69">            throw new BusinessRuleException(&quot;El campo &quot; + field + &quot; es obligatorio&quot;);</span>
+        }
+<span class="fc" id="L71">        return value;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

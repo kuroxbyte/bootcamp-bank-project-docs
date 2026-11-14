@@ -21,16 +21,27 @@ public class GetCreditCardsUseCaseImpl implements GetCreditCardsUseCase {
 
     @Override
     public Single&lt;CreditCard&gt; findById(String id) {
-<span class="fc" id="L24">        return creditCardRepository</span>
-<span class="fc" id="L25">                .findById(id)</span>
-<span class="fc" id="L26">                .switchIfEmpty(</span>
-<span class="fc" id="L27">                        Single.error(</span>
-<span class="fc" id="L28">                                () -&gt; new NotFoundException(&quot;La tarjeta de crédito no existe&quot;)));</span>
+<span class="fc" id="L24">        return findActive(creditCardRepository, id);</span>
     }
 
     @Override
     public Flowable&lt;CreditCard&gt; findAll() {
-<span class="fc" id="L33">        return creditCardRepository.findAll();</span>
+<span class="fc" id="L29">        return creditCardRepository.findAll();</span>
+    }
+
+    /**
+     * Busca una tarjeta activa.
+     *
+     * @return la tarjeta; error {@link NotFoundException} si no existe o fue dada de baja
+     */
+    static Single&lt;CreditCard&gt; findActive(
+            CreditCardRepository creditCardRepository,
+            String creditCardId) {
+<span class="fc" id="L40">        return creditCardRepository</span>
+<span class="fc" id="L41">                .findById(creditCardId)</span>
+<span class="fc bfc" id="L42" title="All 2 branches covered.">                .filter(card -&gt; !card.isClosed())</span>
+<span class="fc" id="L43">                .switchIfEmpty(Single.error(</span>
+<span class="fc" id="L44">                        () -&gt; new NotFoundException(&quot;La tarjeta de crédito no existe&quot;)));</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

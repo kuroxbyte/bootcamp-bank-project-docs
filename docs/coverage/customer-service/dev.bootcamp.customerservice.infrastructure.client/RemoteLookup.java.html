@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RemoteLookup.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">customer-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.customerservice.infrastructure.client</a> &gt; <span class="el_source">RemoteLookup.java</span></div><h1>RemoteLookup.java</h1><pre class="source lang-java linenums">package dev.bootcamp.customerservice.infrastructure.client;
+
+import io.reactivex.rxjava3.core.Flowable;
+import io.reactivex.rxjava3.core.Maybe;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cloud.client.circuitbreaker.ReactiveCircuitBreakerFactory;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+/**
+ * Consulta un recurso por id en otro microservicio, protegida con un circuit breaker.
+ *
+ * &lt;ul&gt;
+ *   &lt;li&gt;404: el recurso no existe; se emite vacío y no cuenta como falla del circuito.&lt;/li&gt;
+ *   &lt;li&gt;Error de conexión, otro código de error, tiempo de espera agotado (2 s, configurado en
+ *       config-repo) o circuito abierto: {@link ServiceUnavailableException}.&lt;/li&gt;
+ * &lt;/ul&gt;
+ */
+<span class="fc" id="L22">@Slf4j</span>
+@Component
+@RequiredArgsConstructor
+public class RemoteLookup {
+
+    private final ReactiveCircuitBreakerFactory&lt;?, ?&gt; circuitBreakerFactory;
+
+    /**
+     * Consulta un recurso por id en otro microservicio.
+     *
+     * @param request     llamada HTTP que obtiene el recurso
+     * @param serviceName nombre del microservicio consultado; también nombra su circuit breaker
+     * @param resourceId  id del recurso consultado, para logs
+     * @return el recurso, vacío si no existe, o error {@link ServiceUnavailableException}
+     */
+    public &lt;T&gt; Maybe&lt;T&gt; findById(Mono&lt;T&gt; request, String serviceName, String resourceId) {
+<span class="fc" id="L38">        Mono&lt;T&gt; call = request</span>
+<span class="fc" id="L39">                .doOnSubscribe(subscription -&gt; log.debug(</span>
+                        &quot;Calling {} resourceId={}&quot;, serviceName, resourceId))
+<span class="fc" id="L41">                .onErrorResume(WebClientResponseException.NotFound.class, notFound -&gt; {</span>
+<span class="fc" id="L42">                    log.debug(&quot;{} returned 404 resourceId={}&quot;, serviceName, resourceId);</span>
+<span class="fc" id="L43">                    return Mono.empty();</span>
+                });
+<span class="fc" id="L45">        Mono&lt;T&gt; protectedCall = circuitBreakerFactory.create(serviceName)</span>
+<span class="fc" id="L46">                .run(call, error -&gt; {</span>
+<span class="fc" id="L47">                    log.error(&quot;{} call failed resourceId={}&quot;, serviceName, resourceId, error);</span>
+<span class="fc" id="L48">                    return Mono.error(new ServiceUnavailableException(</span>
+                            serviceName + &quot; no está disponible&quot;, error));
+                });
+<span class="fc" id="L51">        return Maybe.fromPublisher(protectedCall);</span>
+    }
+
+    /**
+     * Consulta una lista de recursos en otro microservicio, protegida con el mismo circuit breaker.
+     *
+     * @param request     llamada HTTP que obtiene la lista
+     * @param serviceName nombre del microservicio consultado; también nombra su circuit breaker
+     * @return los recursos, o error {@link ServiceUnavailableException} si la llamada falla, se
+     *     agota el tiempo de espera o el circuito está abierto
+     */
+    public &lt;T&gt; Flowable&lt;T&gt; findAll(Flux&lt;T&gt; request, String serviceName) {
+<span class="fc" id="L63">        Flux&lt;T&gt; call = request.doOnSubscribe(</span>
+<span class="fc" id="L64">                subscription -&gt; log.debug(&quot;Listing resources from {}&quot;, serviceName));</span>
+<span class="fc" id="L65">        Flux&lt;T&gt; protectedCall = circuitBreakerFactory.create(serviceName)</span>
+<span class="fc" id="L66">                .run(call, error -&gt; {</span>
+<span class="fc" id="L67">                    log.error(&quot;{} list call failed&quot;, serviceName, error);</span>
+<span class="fc" id="L68">                    return Flux.error(new ServiceUnavailableException(</span>
+                            serviceName + &quot; no está disponible&quot;, error));
+                });
+<span class="fc" id="L71">        return Flowable.fromPublisher(protectedCall);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>
