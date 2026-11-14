@@ -52,27 +52,32 @@ public class CheckingAccount extends BankAccount {
 <span class="fc" id="L52">        changes.allowOnly(</span>
                 &quot;corriente&quot;,
 <span class="fc" id="L54">                Set.of(&quot;maintenanceFee&quot;, &quot;holderIds&quot;, &quot;authorizedSignerIds&quot;));</span>
-<span class="fc" id="L55">        return keepStateIn(new CheckingAccount(</span>
-<span class="fc" id="L56">                getCustomer(),</span>
-<span class="fc" id="L57">                getOpening(),</span>
-<span class="fc" id="L58">                changes.maintenanceFee(),</span>
-<span class="fc" id="L59">                changes.holderIds(),</span>
-<span class="fc" id="L60">                changes.authorizedSignerIds()));</span>
+        // Al modificar, la comisión siempre se envía: 0 en la cuenta PYME.
+<span class="fc bfc" id="L56" title="All 2 branches covered.">        if (changes.maintenanceFee() == null) {</span>
+<span class="fc" id="L57">            throw new BusinessRuleException(</span>
+                    &quot;El campo maintenanceFee es obligatorio (0 si el cliente es PYME)&quot;);
+        }
+<span class="fc" id="L60">        return keepStateIn(new CheckingAccount(</span>
+<span class="fc" id="L61">                getCustomer(),</span>
+<span class="fc" id="L62">                getOpening(),</span>
+<span class="fc" id="L63">                changes.maintenanceFee(),</span>
+<span class="fc" id="L64">                changes.holderIds(),</span>
+<span class="fc" id="L65">                changes.authorizedSignerIds()));</span>
     }
 
     private static BigDecimal validMaintenanceFee(Customer customer, BigDecimal maintenanceFee) {
-<span class="fc bfc" id="L64" title="All 2 branches covered.">        if (customer.profile() == CustomerProfile.PYME) {</span>
-<span class="fc bfc" id="L65" title="All 4 branches covered.">            if (maintenanceFee != null &amp;&amp; maintenanceFee.signum() != 0) {</span>
-<span class="fc" id="L66">                throw new BusinessRuleException(</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">        if (customer.profile() == CustomerProfile.PYME) {</span>
+<span class="fc bfc" id="L70" title="All 4 branches covered.">            if (maintenanceFee != null &amp;&amp; maintenanceFee.signum() != 0) {</span>
+<span class="fc" id="L71">                throw new BusinessRuleException(</span>
                         &quot;La cuenta corriente PYME no tiene comisión de mantenimiento&quot;);
             }
-<span class="fc" id="L69">            return BigDecimal.ZERO;</span>
+<span class="fc" id="L74">            return BigDecimal.ZERO;</span>
         }
-<span class="fc bfc" id="L71" title="All 4 branches covered.">        if (maintenanceFee == null || maintenanceFee.signum() &lt;= 0) {</span>
-<span class="fc" id="L72">            throw new BusinessRuleException(</span>
+<span class="fc bfc" id="L76" title="All 4 branches covered.">        if (maintenanceFee == null || maintenanceFee.signum() &lt;= 0) {</span>
+<span class="fc" id="L77">            throw new BusinessRuleException(</span>
                     &quot;La cuenta corriente debe tener comisión de mantenimiento&quot;);
         }
-<span class="fc" id="L75">        return maintenanceFee;</span>
+<span class="fc" id="L80">        return maintenanceFee;</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

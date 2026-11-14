@@ -4,7 +4,7 @@ El sistema no tiene interfaz gráfica; las funcionalidades se verifican con esta
 
 | Archivo | Contenido |
 |---|---|
-| `bank-microservices.postman_collection.json` | 263 peticiones en 17 carpetas (clientes, autenticación, cuentas, créditos y tarjetas, transacciones de cuentas, pagos de créditos, tarjetas, productos VIP y PYME, comisión por transacción, transferencias, reportes, pagos de terceros, deuda vencida, tarjeta de débito, monedero Yanki, seguridad y administración y bajas), con pruebas automáticas de código de respuesta, reglas de negocio y formato de errores. |
+| `bank-microservices.postman_collection.json` | 268 peticiones en 17 carpetas (clientes, autenticación, cuentas, créditos y tarjetas, transacciones de cuentas, pagos de créditos, tarjetas, productos VIP y PYME, comisión por transacción, transferencias, reportes, pagos de terceros, deuda vencida, tarjeta de débito, monedero Yanki, seguridad y administración y bajas), con pruebas automáticas de código de respuesta, reglas de negocio y formato de errores. |
 | `bank-gateway.postman_environment.json` | Todas las peticiones por el API Gateway en `localhost:8080`. |
 
 Todas las peticiones pasan por el API Gateway, que valida el token JWT. Después de crear los
@@ -54,6 +54,7 @@ poder registrar su único movimiento del mes.
 La carpeta de administración inicia sesión como empleado (`admin` / `Admin2026!`, token con rol
 `ADMIN`) y recorre el CRUD con un cliente propio: lista clientes, modifica y da de baja el cliente y
 sus cuentas, tarjeta de débito, crédito y tarjeta de crédito, comprobando cada regla (saldo, deuda,
-tarjeta asociada, productos activos). Termina con un monedero Yanki que su dueño modifica y da de
-baja. Las peticiones que dependen de un evento de Kafka (usuario eliminado, tarjeta quitada) esperan
-unos segundos antes de enviarse.
+tarjeta asociada, productos activos). También comprueba que la comisión de la corriente PYME sea
+obligatoria (0) al modificarla. Termina con un monedero Yanki que su dueño modifica y da de baja, y
+con un monedero nuevo que reutiliza su celular. Las peticiones que dependen de un evento de Kafka
+(usuario eliminado, tarjeta quitada) esperan unos segundos antes de enviarse.

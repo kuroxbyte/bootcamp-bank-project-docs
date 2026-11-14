@@ -17,7 +17,8 @@ yanki-service,dev.bootcamp.yankiservice.domain.model.payment,PaymentStep,0,27,0,
 yanki-service,dev.bootcamp.yankiservice.infrastructure.persistence,YankiPaymentPersistenceAdapter,0,93,0,0,0,33,0,4,0,4
 yanki-service,dev.bootcamp.yankiservice.infrastructure.persistence,DebitCardLinkPersistenceAdapter,0,78,0,0,0,26,0,4,0,4
 yanki-service,dev.bootcamp.yankiservice.infrastructure.persistence,WalletPersistenceAdapter.ConcurrentBalanceChange,7,0,0,0,2,0,1,0,1,0
-yanki-service,dev.bootcamp.yankiservice.infrastructure.persistence,WalletPersistenceAdapter,4,287,1,9,1,63,1,25,0,21
+yanki-service,dev.bootcamp.yankiservice.infrastructure.persistence,IndexMigration,11,188,1,11,2,41,3,18,2,13
+yanki-service,dev.bootcamp.yankiservice.infrastructure.persistence,WalletPersistenceAdapter,4,338,1,17,1,71,1,31,0,23
 yanki-service,dev.bootcamp.yankiservice.domain.model.link,DebitCardLink,0,21,0,0,0,8,0,1,0,1
 yanki-service,dev.bootcamp.yankiservice.domain.model.link,LinkStatus,0,27,0,0,0,5,0,1,0,1
 yanki-service,dev.bootcamp.yankiservice.application.usecase,HandleOperationResultUseCaseImpl,0,296,0,24,0,60,0,30,0,17
@@ -26,11 +27,11 @@ yanki-service,dev.bootcamp.yankiservice.application.usecase,LinkDebitCardUseCase
 yanki-service,dev.bootcamp.yankiservice.application.usecase,SendPaymentUseCaseImpl,1,312,1,11,0,63,1,27,0,22
 yanki-service,dev.bootcamp.yankiservice.application.usecase,SaveDebitCardUseCaseImpl,0,15,0,0,0,3,0,2,0,2
 yanki-service,dev.bootcamp.yankiservice.application.usecase,GetWalletUseCaseImpl,1,61,1,5,0,9,1,10,0,8
-yanki-service,dev.bootcamp.yankiservice.application.usecase,UpdateWalletUseCaseImpl,1,128,1,7,0,23,1,16,0,13
+yanki-service,dev.bootcamp.yankiservice.application.usecase,UpdateWalletUseCaseImpl,1,125,1,7,0,23,1,16,0,13
 yanki-service,dev.bootcamp.yankiservice.domain.model.operation,OperationId,0,61,0,2,0,8,0,6,0,5
 yanki-service,dev.bootcamp.yankiservice.domain.model.debitcard,DebitCard,0,17,0,0,0,2,0,2,0,2
 yanki-service,dev.bootcamp.yankiservice.domain.exception,BusinessRuleException,0,4,0,0,0,2,0,1,0,1
 yanki-service,dev.bootcamp.yankiservice.domain.exception,NotFoundException,0,4,0,0,0,2,0,1,0,1
 yanki-service,dev.bootcamp.yankiservice.domain.exception,OperationUnavailableException,0,5,0,0,0,2,0,1,0,1
 yanki-service,dev.bootcamp.yankiservice.infrastructure.cache,CachedDebitCardRepository,0,153,0,0,0,38,0,13,0,13
-yanki-service,dev.bootcamp.yankiservice.infrastructure.cache,WalletPhoneCache,0,51,0,0,0,16,0,6,0,6
+yanki-service,dev.bootcamp.yankiservice.infrastructure.cache,WalletPhoneCache,0,73,0,0,0,21,0,8,0,8

@@ -167,7 +167,7 @@ acepta operaciones; su historial de movimientos se conserva.
 | Entidad | Listar | Modificar (`PUT`) | Dar de baja (`DELETE`) |
 |---|---|---|---|
 | Cliente | `GET /api/v1/customers` (ADMIN) | ADMIN: nombre y perfil; el cliente: solo su nombre | ADMIN, sin cuentas, créditos ni tarjetas activos |
-| Cuenta | `GET /api/v1/accounts` (cliente) | ADMIN: condiciones de su tipo (mantenimiento, titulares y firmantes; límite de movimientos y promedio VIP; día del plazo fijo) | ADMIN, con saldo 0 y sin tarjeta de débito |
+| Cuenta | `GET /api/v1/accounts` (cliente) | ADMIN: condiciones de su tipo (mantenimiento —obligatorio, 0 en PYME—, titulares y firmantes; límite de movimientos y promedio VIP; día del plazo fijo) | ADMIN, con saldo 0 y sin tarjeta de débito |
 | Tarjeta de débito | `GET /api/v1/debit-cards` (cliente) | El cliente: asociar cuentas y cambiar la principal | ADMIN; sus cuentas quedan libres |
 | Crédito | `GET /api/v1/credits` (cliente) | ADMIN: fecha de vencimiento | ADMIN, pagado por completo |
 | Tarjeta de crédito | `GET /api/v1/credit-cards` (cliente) | ADMIN: límite (no menor que la deuda) y día de pago | ADMIN, sin deuda |
@@ -183,11 +183,16 @@ y transaction-service y yanki-service dejan de usar la tarjeta de débito dada d
 que la tenía vuelve a usar su propio saldo).
 
 Una cuenta, crédito o tarjeta dado de baja no cuenta para los límites por cliente (por ejemplo, una
-sola cuenta de ahorro personal). El celular de un monedero dado de baja no se puede reutilizar.
+sola cuenta de ahorro personal). El celular de un monedero dado de baja queda libre: el monedero lo
+guarda aparte (`closedPhone`) y se puede crear un monedero nuevo con ese celular. Si el
+`WalletCreated` del nuevo llega a auth-service antes que el `WalletClosed` del anterior, auth-service
+reemplaza igual la copia y el acceso de ese celular.
 
-En una base de datos de account-service creada antes de este cambio, el índice único de
-`debit_cards.accountIds` pasa a ser disperso (`sparse`): hay que borrar el índice anterior
-(`db.debit_cards.dropIndex("accountIds")`) o recrear el volumen (`docker compose down -v`).
+Al arrancar, account-service y yanki-service ponen los índices de MongoDB al día con sus
+anotaciones (`IndexMigration`): si un índice existe con otras opciones (`unique` o `sparse`), lo
+recrean. Así, una base de datos existente recibe sin pasos manuales los índices dispersos de
+`debit_cards.accountIds` y `wallets.phone`. Se desactiva con
+`mongodb.index-migration.on-startup=false`.
 
 ## Comisiones mensuales
 

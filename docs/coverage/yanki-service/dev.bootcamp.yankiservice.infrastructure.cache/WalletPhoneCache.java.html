@@ -47,15 +47,27 @@ public class WalletPhoneCache {
     }
 
     /**
+     * Quita el celular de la caché (el monedero se dio de baja).
+     */
+    public Mono&lt;Void&gt; evict(String phone) {
+<span class="fc" id="L53">        return redisTemplate.delete(KEY_PREFIX + phone)</span>
+<span class="fc" id="L54">                .then()</span>
+<span class="fc" id="L55">                .onErrorResume(error -&gt; {</span>
+<span class="fc" id="L56">                    log.warn(&quot;Redis delete failed phone={}&quot;, phone, error);</span>
+<span class="fc" id="L57">                    return Mono.empty();</span>
+                });
+    }
+
+    /**
      * Guarda el id del monedero del celular.
      */
     public Mono&lt;Void&gt; put(String phone, String walletId) {
-<span class="fc" id="L53">        return redisTemplate.opsForValue()</span>
-<span class="fc" id="L54">                .set(KEY_PREFIX + phone, walletId, ttl)</span>
-<span class="fc" id="L55">                .then()</span>
-<span class="fc" id="L56">                .onErrorResume(error -&gt; {</span>
-<span class="fc" id="L57">                    log.warn(&quot;Redis write failed phone={}&quot;, phone, error);</span>
-<span class="fc" id="L58">                    return Mono.empty();</span>
+<span class="fc" id="L65">        return redisTemplate.opsForValue()</span>
+<span class="fc" id="L66">                .set(KEY_PREFIX + phone, walletId, ttl)</span>
+<span class="fc" id="L67">                .then()</span>
+<span class="fc" id="L68">                .onErrorResume(error -&gt; {</span>
+<span class="fc" id="L69">                    log.warn(&quot;Redis write failed phone={}&quot;, phone, error);</span>
+<span class="fc" id="L70">                    return Mono.empty();</span>
                 });
     }
 }
