@@ -264,11 +264,14 @@ services:
     build: ./debt-service
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
+      EUREKA_URL: http://discovery-server:8761/eureka/
       MONGODB_URI: mongodb://debt-db:27017/debt_db
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     ports:
       - "${DEBT_SERVICE_PORT:-8086}:8086"
     depends_on:
+      discovery-server:
+        condition: service_healthy
       config-server:
         condition: service_healthy
       debt-db:
