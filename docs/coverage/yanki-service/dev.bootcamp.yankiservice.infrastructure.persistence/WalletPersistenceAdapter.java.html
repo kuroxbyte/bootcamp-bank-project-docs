@@ -53,80 +53,87 @@ public class WalletPersistenceAdapter implements WalletRepository {
 <span class="fc" id="L53">        Mono&lt;WalletDocument&gt; fromDatabase = mongoRepository.findByPhone(phone)</span>
 <span class="fc" id="L54">                .flatMap(document -&gt; phoneCache.put(phone, document.getId())</span>
 <span class="fc" id="L55">                        .thenReturn(document));</span>
-<span class="fc" id="L56">        Mono&lt;WalletDocument&gt; fromCache = phoneCache.walletId(phone)</span>
-<span class="fc" id="L57">                .flatMap(mongoRepository::findById);</span>
-<span class="fc" id="L58">        return Maybe.fromPublisher(fromCache.switchIfEmpty(fromDatabase))</span>
-<span class="fc" id="L59">                .map(WalletPersistenceAdapter::toDomain);</span>
+        // Si el monedero en caché ya no tiene ese celular (fue dado de baja), se busca en la base.
+<span class="fc" id="L57">        Mono&lt;WalletDocument&gt; fromCache = phoneCache.walletId(phone)</span>
+<span class="fc" id="L58">                .flatMap(mongoRepository::findById)</span>
+<span class="fc" id="L59">                .filter(document -&gt; phone.equals(document.getPhone()));</span>
+<span class="fc" id="L60">        return Maybe.fromPublisher(fromCache.switchIfEmpty(fromDatabase))</span>
+<span class="fc" id="L61">                .map(WalletPersistenceAdapter::toDomain);</span>
     }
 
     @Override
     public Single&lt;Boolean&gt; existsByDebitCardId(String debitCardId) {
-<span class="fc" id="L64">        return Single.fromPublisher(mongoRepository.existsByDebitCardId(debitCardId));</span>
+<span class="fc" id="L66">        return Single.fromPublisher(mongoRepository.existsByDebitCardId(debitCardId));</span>
     }
 
     @Override
     public Single&lt;Boolean&gt; debitBalance(String walletId, BigDecimal amount) {
-<span class="fc" id="L69">        Mono&lt;Long&gt; modified = mongoRepository</span>
-<span class="fc" id="L70">                .findAndIncrementBalanceByIdAndStatusAndDebitCardIdIsNullAndBalanceGreaterThanEqual(</span>
-<span class="fc" id="L71">                        walletId, ACTIVE, new Decimal128(amount), new Decimal128(amount.negate()));</span>
-<span class="fc bfc" id="L72" title="All 2 branches covered.">        return Single.fromPublisher(modified).map(count -&gt; count == 1);</span>
+<span class="fc" id="L71">        Mono&lt;Long&gt; modified = mongoRepository</span>
+<span class="fc" id="L72">                .findAndIncrementBalanceByIdAndStatusAndDebitCardIdIsNullAndBalanceGreaterThanEqual(</span>
+<span class="fc" id="L73">                        walletId, ACTIVE, new Decimal128(amount), new Decimal128(amount.negate()));</span>
+<span class="fc bfc" id="L74" title="All 2 branches covered.">        return Single.fromPublisher(modified).map(count -&gt; count == 1);</span>
     }
 
     @Override
     public Completable creditBalance(String walletId, BigDecimal amount) {
-<span class="fc" id="L77">        return Completable.fromPublisher(</span>
-<span class="fc" id="L78">                mongoRepository.findAndIncrementBalanceById(walletId, new Decimal128(amount)));</span>
+<span class="fc" id="L79">        return Completable.fromPublisher(</span>
+<span class="fc" id="L80">                mongoRepository.findAndIncrementBalanceById(walletId, new Decimal128(amount)));</span>
     }
 
     @Override
     public Maybe&lt;BigDecimal&gt; startLinking(String walletId) {
-<span class="fc" id="L83">        Mono&lt;BigDecimal&gt; attempt = mongoRepository.findById(walletId)</span>
-<span class="fc" id="L84">                .filter(WalletPersistenceAdapter::isAvailable)</span>
-<span class="fc" id="L85">                .flatMap(document -&gt; mongoRepository</span>
-<span class="fc" id="L86">                        .findAndStartLinkingByIdAndStatusAndDebitCardIdIsNullAndBalance(</span>
-<span class="fc" id="L87">                                walletId, ACTIVE, new Decimal128(document.getBalance()), ZERO)</span>
-<span class="pc bpc" id="L88" title="1 of 2 branches missed.">                        .flatMap(modified -&gt; modified == 1</span>
-<span class="fc" id="L89">                                ? Mono.just(document.getBalance())</span>
-<span class="nc" id="L90">                                : Mono.error(new ConcurrentBalanceChange())));</span>
+<span class="fc" id="L85">        Mono&lt;BigDecimal&gt; attempt = mongoRepository.findById(walletId)</span>
+<span class="fc" id="L86">                .filter(WalletPersistenceAdapter::isAvailable)</span>
+<span class="fc" id="L87">                .flatMap(document -&gt; mongoRepository</span>
+<span class="fc" id="L88">                        .findAndStartLinkingByIdAndStatusAndDebitCardIdIsNullAndBalance(</span>
+<span class="fc" id="L89">                                walletId, ACTIVE, new Decimal128(document.getBalance()), ZERO)</span>
+<span class="pc bpc" id="L90" title="1 of 2 branches missed.">                        .flatMap(modified -&gt; modified == 1</span>
+<span class="fc" id="L91">                                ? Mono.just(document.getBalance())</span>
+<span class="nc" id="L92">                                : Mono.error(new ConcurrentBalanceChange())));</span>
         // Si un pago cambió el saldo entre la lectura y la actualización, se vuelve a leer.
-<span class="fc" id="L92">        return Maybe.fromPublisher(attempt.retryWhen(Retry.max(LINKING_RETRIES)</span>
-<span class="fc" id="L93">                .filter(ConcurrentBalanceChange.class::isInstance)));</span>
+<span class="fc" id="L94">        return Maybe.fromPublisher(attempt.retryWhen(Retry.max(LINKING_RETRIES)</span>
+<span class="fc" id="L95">                .filter(ConcurrentBalanceChange.class::isInstance)));</span>
     }
 
     @Override
     public Completable finishLinking(String walletId, String debitCardId) {
-<span class="fc" id="L98">        return Completable.fromPublisher(</span>
-<span class="fc" id="L99">                mongoRepository.findAndSetDebitCardIdById(walletId, debitCardId));</span>
+<span class="fc" id="L100">        return Completable.fromPublisher(</span>
+<span class="fc" id="L101">                mongoRepository.findAndSetDebitCardIdById(walletId, debitCardId));</span>
     }
 
     @Override
     public Completable cancelLinking(String walletId, BigDecimal balance) {
-<span class="fc" id="L104">        return Completable.fromPublisher(</span>
-<span class="fc" id="L105">                mongoRepository.findAndRestoreBalanceById(walletId, new Decimal128(balance)));</span>
+<span class="fc" id="L106">        return Completable.fromPublisher(</span>
+<span class="fc" id="L107">                mongoRepository.findAndRestoreBalanceById(walletId, new Decimal128(balance)));</span>
     }
 
     @Override
     public Completable updateContact(String walletId, String imei, String email) {
-<span class="fc" id="L110">        return Completable.fromPublisher(</span>
-<span class="fc" id="L111">                mongoRepository.findAndSetContactById(walletId, imei, email));</span>
+<span class="fc" id="L112">        return Completable.fromPublisher(</span>
+<span class="fc" id="L113">                mongoRepository.findAndSetContactById(walletId, imei, email));</span>
     }
 
     @Override
-    public Single&lt;Boolean&gt; close(String walletId, BigDecimal expectedBalance) {
-<span class="fc" id="L116">        return Single.fromPublisher(mongoRepository.findAndCloseByIdAndStatusAndBalance(</span>
-                        walletId, ACTIVE, new Decimal128(expectedBalance)))
-<span class="fc bfc" id="L118" title="All 2 branches covered.">                .map(modified -&gt; modified == 1);</span>
+    public Single&lt;Boolean&gt; close(Wallet wallet) {
+<span class="fc" id="L118">        Mono&lt;Boolean&gt; closed = mongoRepository.findAndCloseByIdAndStatusAndBalance(</span>
+<span class="fc" id="L119">                        wallet.getId(), ACTIVE, new Decimal128(wallet.getBalance()))</span>
+<span class="fc bfc" id="L120" title="All 2 branches covered.">                .map(modified -&gt; modified == 1)</span>
+                // El celular queda libre: su entrada de caché ya no apunta a un monedero activo.
+<span class="fc bfc" id="L122" title="All 2 branches covered.">                .flatMap(done -&gt; done</span>
+<span class="fc" id="L123">                        ? phoneCache.evict(wallet.getPhone()).thenReturn(true)</span>
+<span class="fc" id="L124">                        : Mono.just(false));</span>
+<span class="fc" id="L125">        return Single.fromPublisher(closed);</span>
     }
 
     @Override
     public Completable releaseDebitCard(String debitCardId) {
-<span class="fc" id="L123">        return Completable.fromPublisher(</span>
-<span class="fc" id="L124">                mongoRepository.findAndUnsetDebitCardIdByDebitCardId(debitCardId));</span>
+<span class="fc" id="L130">        return Completable.fromPublisher(</span>
+<span class="fc" id="L131">                mongoRepository.findAndUnsetDebitCardIdByDebitCardId(debitCardId));</span>
     }
 
     // Monedero activo y sin tarjeta: el único que usa su propio saldo.
     private static boolean isAvailable(WalletDocument document) {
-<span class="fc bfc" id="L129" title="All 4 branches covered.">        return ACTIVE.equals(document.getStatus()) &amp;&amp; document.getDebitCardId() == null;</span>
+<span class="fc bfc" id="L136" title="All 4 branches covered.">        return ACTIVE.equals(document.getStatus()) &amp;&amp; document.getDebitCardId() == null;</span>
     }
 
     /**
@@ -139,37 +146,39 @@ public class WalletPersistenceAdapter implements WalletRepository {
          * Crea la señal sin traza: solo sirve para reintentar.
          */
         ConcurrentBalanceChange() {
-<span class="nc" id="L142">            super(&quot;El saldo del monedero cambió durante la asociación&quot;, null, false, false);</span>
-<span class="nc" id="L143">        }</span>
+<span class="nc" id="L149">            super(&quot;El saldo del monedero cambió durante la asociación&quot;, null, false, false);</span>
+<span class="nc" id="L150">        }</span>
     }
 
     private static WalletDocument toDocument(Wallet wallet) {
-<span class="fc" id="L147">        return new WalletDocument(</span>
-<span class="fc" id="L148">                wallet.getId(),</span>
-<span class="fc" id="L149">                wallet.getDocumentType().name(),</span>
-<span class="fc" id="L150">                wallet.getDocumentNumber(),</span>
-<span class="fc" id="L151">                wallet.getPhone(),</span>
-<span class="fc" id="L152">                wallet.getImei(),</span>
-<span class="fc" id="L153">                wallet.getEmail(),</span>
-<span class="fc" id="L154">                wallet.getBalance(),</span>
-<span class="fc" id="L155">                wallet.getDebitCardId(),</span>
-<span class="fc" id="L156">                wallet.getStatus().name(),</span>
-<span class="fc" id="L157">                wallet.getCreatedAt());</span>
+<span class="fc" id="L154">        boolean closed = wallet.isClosed();</span>
+<span class="fc" id="L155">        return new WalletDocument(</span>
+<span class="fc" id="L156">                wallet.getId(),</span>
+<span class="fc" id="L157">                wallet.getDocumentType().name(),</span>
+<span class="fc" id="L158">                wallet.getDocumentNumber(),</span>
+<span class="fc bfc" id="L159" title="All 2 branches covered.">                closed ? null : wallet.getPhone(),</span>
+<span class="fc" id="L160">                wallet.getImei(),</span>
+<span class="fc" id="L161">                wallet.getEmail(),</span>
+<span class="fc" id="L162">                wallet.getBalance(),</span>
+<span class="fc" id="L163">                wallet.getDebitCardId(),</span>
+<span class="fc" id="L164">                wallet.getStatus().name(),</span>
+<span class="fc" id="L165">                wallet.getCreatedAt(),</span>
+<span class="fc bfc" id="L166" title="All 2 branches covered.">                closed ? wallet.getPhone() : null);</span>
     }
 
     private static Wallet toDomain(WalletDocument document) {
-<span class="fc" id="L161">        Wallet wallet = new Wallet(</span>
-<span class="fc" id="L162">                DocumentType.valueOf(document.getDocumentType()),</span>
-<span class="fc" id="L163">                document.getDocumentNumber(),</span>
-<span class="fc" id="L164">                document.getPhone(),</span>
-<span class="fc" id="L165">                document.getImei(),</span>
-<span class="fc" id="L166">                document.getEmail());</span>
-<span class="fc" id="L167">        wallet.setId(document.getId());</span>
-<span class="fc" id="L168">        wallet.setBalance(document.getBalance());</span>
-<span class="fc" id="L169">        wallet.setDebitCardId(document.getDebitCardId());</span>
-<span class="fc" id="L170">        wallet.setStatus(WalletStatus.valueOf(document.getStatus()));</span>
-<span class="fc" id="L171">        wallet.setCreatedAt(document.getCreatedAt());</span>
-<span class="fc" id="L172">        return wallet;</span>
+<span class="fc" id="L170">        Wallet wallet = new Wallet(</span>
+<span class="fc" id="L171">                DocumentType.valueOf(document.getDocumentType()),</span>
+<span class="fc" id="L172">                document.getDocumentNumber(),</span>
+<span class="fc bfc" id="L173" title="All 2 branches covered.">                document.getPhone() != null ? document.getPhone() : document.getClosedPhone(),</span>
+<span class="fc" id="L174">                document.getImei(),</span>
+<span class="fc" id="L175">                document.getEmail());</span>
+<span class="fc" id="L176">        wallet.setId(document.getId());</span>
+<span class="fc" id="L177">        wallet.setBalance(document.getBalance());</span>
+<span class="fc" id="L178">        wallet.setDebitCardId(document.getDebitCardId());</span>
+<span class="fc" id="L179">        wallet.setStatus(WalletStatus.valueOf(document.getStatus()));</span>
+<span class="fc" id="L180">        wallet.setCreatedAt(document.getCreatedAt());</span>
+<span class="fc" id="L181">        return wallet;</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

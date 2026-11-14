@@ -43,7 +43,7 @@ public class UpdateWalletUseCaseImpl implements UpdateWalletUseCase {
                                                     + &quot; segundos&quot;))
 <span class="fc" id="L44">                                    : Single.just(wallet));</span>
                 })
-<span class="fc" id="L46">                .flatMap(wallet -&gt; walletRepository.close(walletId, wallet.getBalance())</span>
+<span class="fc" id="L46">                .flatMap(wallet -&gt; walletRepository.close(wallet)</span>
 <span class="fc bfc" id="L47" title="All 2 branches covered.">                        .flatMap(closed -&gt; closed</span>
 <span class="fc" id="L48">                                ? Single.just(wallet)</span>
 <span class="fc" id="L49">                                : Single.&lt;Wallet&gt;error(new BusinessRuleException(</span>

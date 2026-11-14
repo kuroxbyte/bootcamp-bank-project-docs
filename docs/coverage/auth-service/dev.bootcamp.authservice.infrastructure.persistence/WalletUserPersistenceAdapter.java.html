@@ -39,16 +39,22 @@ public class WalletUserPersistenceAdapter implements WalletUserRepository {
     }
 
     @Override
+    public Completable deleteByPhoneAndOtherWallet(String phone, String walletId) {
+<span class="fc" id="L43">        return Completable.fromPublisher(</span>
+<span class="fc" id="L44">                mongoRepository.deleteByPhoneAndWalletIdNot(phone, walletId));</span>
+    }
+
+    @Override
     public Completable deleteByWalletId(String walletId) {
-<span class="fc" id="L43">        return Completable.fromPublisher(mongoRepository.deleteByWalletId(walletId));</span>
+<span class="fc" id="L49">        return Completable.fromPublisher(mongoRepository.deleteByWalletId(walletId));</span>
     }
 
     private static WalletUser toDomain(WalletUserDocument document) {
-<span class="fc" id="L47">        return new WalletUser(</span>
-<span class="fc" id="L48">                document.getId(),</span>
-<span class="fc" id="L49">                document.getWalletId(),</span>
-<span class="fc" id="L50">                document.getPhone(),</span>
-<span class="fc" id="L51">                document.getPasswordHash());</span>
+<span class="fc" id="L53">        return new WalletUser(</span>
+<span class="fc" id="L54">                document.getId(),</span>
+<span class="fc" id="L55">                document.getWalletId(),</span>
+<span class="fc" id="L56">                document.getPhone(),</span>
+<span class="fc" id="L57">                document.getPasswordHash());</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

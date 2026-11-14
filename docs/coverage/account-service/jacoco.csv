@@ -8,7 +8,7 @@ account-service,dev.bootcamp.accountservice.domain.model.account,OpeningAmount,0
 account-service,dev.bootcamp.accountservice.domain.model.account,VipSavingsAccount,0,51,0,6,0,14,0,5,0,2
 account-service,dev.bootcamp.accountservice.domain.model.account,MinimumOpeningAmounts,0,51,1,5,0,5,1,3,0,1
 account-service,dev.bootcamp.accountservice.domain.model.account,BankAccount,0,29,0,2,0,8,0,4,0,3
-account-service,dev.bootcamp.accountservice.domain.model.account,CheckingAccount,0,91,0,18,0,23,0,12,0,3
+account-service,dev.bootcamp.accountservice.domain.model.account,CheckingAccount,0,99,0,20,0,25,0,13,0,3
 account-service,dev.bootcamp.accountservice.infrastructure.client,ServiceUnavailableException,0,5,0,0,0,2,0,1,0,1
 account-service,dev.bootcamp.accountservice.infrastructure.client,RemoteLookup,0,66,0,0,0,11,0,5,0,5
 account-service,dev.bootcamp.accountservice.infrastructure.client.customer,CustomerWebClientAdapter,0,48,0,0,0,14,0,3,0,3
@@ -24,6 +24,7 @@ account-service,dev.bootcamp.accountservice.infrastructure.web.controller,DebitC
 account-service,dev.bootcamp.accountservice.infrastructure.web.mapper,AccountWebMapper,8,102,1,7,2,27,1,4,0,1
 account-service,dev.bootcamp.accountservice.infrastructure.persistence,BankAccountPersistenceAdapter,0,48,0,0,0,13,0,6,0,6
 account-service,dev.bootcamp.accountservice.infrastructure.persistence,DebitCardPersistenceAdapter,0,81,0,6,0,25,0,8,0,5
+account-service,dev.bootcamp.accountservice.infrastructure.persistence,IndexMigration,11,188,1,11,2,41,3,18,2,13
 account-service,dev.bootcamp.accountservice.infrastructure.persistence,BankAccountPersistenceMapper,15,216,2,16,4,58,2,10,0,2
 account-service,dev.bootcamp.accountservice.infrastructure.client.credit,CreditCardWebClientAdapter,0,40,0,0,0,13,0,2,0,2
 account-service,dev.bootcamp.accountservice.infrastructure.messaging,DebitCardKafkaEventPublisher,0,137,0,0,0,29,0,9,0,9
