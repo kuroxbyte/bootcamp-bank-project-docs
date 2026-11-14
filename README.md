@@ -143,6 +143,20 @@ público); hay uno por celular. Los pagos se envían con solo el celular del des
   `debit-card-events` (copia en MongoDB con caché en Redis) y publica `WalletCreated` en
   `yanki-events` para que auth-service registre el acceso del monedero.
 
+## Comisiones mensuales
+
+El día 1 de cada mes a las 00:15 (`MONTHLY_FEES_CRON`), transaction-service cobra el mes anterior a
+todas las cuentas, que lista con el endpoint interno de account-service:
+
+- `MAINTENANCE_FEE`: la comisión de mantenimiento de cada cuenta corriente (la PYME no tiene).
+- `MINIMUM_AVERAGE_FEE`: si una cuenta de ahorro VIP no alcanzó su promedio diario mínimo del mes,
+  una comisión de 15.00 (`MINIMUM_AVERAGE_FEE`).
+
+Las comisiones llevan fecha del día 1 y nunca dejan el saldo negativo: si no alcanza, se cobra lo que
+haya. El cobro no se repite para la misma cuenta y mes. No cuentan como transacciones del cliente
+(límite de movimientos, día del plazo fijo, transacciones sin comisión), pero aparecen en los
+movimientos y en el reporte por producto.
+
 ## Deuda vencida
 
 Un cliente con deuda vencida en algún producto de crédito no puede adquirir otro producto: abrir una
