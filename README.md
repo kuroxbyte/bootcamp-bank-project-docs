@@ -13,7 +13,7 @@ Carpeta raíz de la solución. Cada microservicio y la configuración tienen su 
 | `credit-service` | Créditos y tarjetas de crédito | 8083 |
 | `transaction-service` | Depósitos, retiros, transferencias, pagos, consumos, saldos, movimientos y reportes | 8084 |
 | `auth-service` | Registro de usuarios e inicio de sesión con JWT | 8085 |
-| `debt-service` | Deuda vencida de cada cliente (solo eventos, sin API) | 8086 |
+| `debt-service` | Deuda vencida de cada cliente (solo eventos, sin API; registrado en Eureka) | 8086 |
 | `yanki-service` | Monedero móvil Yanki: pagos con el número de celular (solo eventos con los demás servicios) | 8087 |
 
 ## Levantar la solución con Docker
