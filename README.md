@@ -1,9 +1,31 @@
 # Sistema bancario — microservicios
 
-Carpeta raíz de la solución. Cada microservicio y la configuración tienen su propio repositorio git:
+Repositorio `bank-project-docs`: documentación (diagramas, contratos de eventos, cobertura), colección
+de Postman y `docker-compose` de la solución. La solución tiene 12 repositorios git; los demás son los
+microservicios y la configuración, y se clonan en la misma carpeta que este:
 
-| Carpeta | Descripción | Puerto |
+```text
+bank-project/
+├── bank-project-docs/      este repositorio
+├── api-gateway/
+├── discovery-server/
+├── config-server/
+├── config-repo/
+├── customer-service/
+├── account-service/
+├── credit-service/
+├── transaction-service/
+├── auth-service/
+├── debt-service/
+└── yanki-service/
+```
+
+Los comandos de este README se ejecutan desde `bank-project-docs`: `docker-compose.yml` construye
+cada imagen desde la carpeta vecina (`../account-service`, etc.) y monta `../config-repo`.
+
+| Repositorio | Descripción | Puerto |
 |---|---|---|
+| `bank-project-docs` | Documentación, Postman y Docker Compose | — |
 | `api-gateway` | Punto de entrada único (Spring Cloud Gateway); valida el JWT y enruta por Eureka | 8080 |
 | `discovery-server` | Registro de APIs (Eureka); panel en http://localhost:8761/ | 8761 |
 | `config-server` | Spring Cloud Config Server | 8888 |

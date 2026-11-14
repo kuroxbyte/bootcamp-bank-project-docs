@@ -107,7 +107,7 @@ services:
       retries: 10
 
   discovery-server:
-    build: ./discovery-server
+    build: ../discovery-server
     environment:
       EUREKA_HOSTNAME: discovery-server
     ports:
@@ -119,7 +119,7 @@ services:
       retries: 10
 
   config-server:
-    build: ./config-server
+    build: ../config-server
     environment:
       # En Docker se leen los archivos de config-repo montados en solo lectura (perfil native),
       # para que el contenedor no haga checkout ni escriba en el repositorio git del host.
@@ -127,7 +127,7 @@ services:
       SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS: file:/config-repo/
       EUREKA_URL: http://discovery-server:8761/eureka/
     volumes:
-      - ./config-repo:/config-repo:ro
+      - ../config-repo:/config-repo:ro
     ports:
       - "${CONFIG_SERVER_PORT:-8888}:8888"
     depends_on:
@@ -140,7 +140,7 @@ services:
       retries: 10
 
   api-gateway:
-    build: ./api-gateway
+    build: ../api-gateway
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_URL: http://discovery-server:8761/eureka/
@@ -153,7 +153,7 @@ services:
         condition: service_healthy
 
   customer-service:
-    build: ./customer-service
+    build: ../customer-service
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_URL: http://discovery-server:8761/eureka/
@@ -172,7 +172,7 @@ services:
         condition: service_healthy
 
   account-service:
-    build: ./account-service
+    build: ../account-service
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_URL: http://discovery-server:8761/eureka/
@@ -194,7 +194,7 @@ services:
         condition: service_healthy
 
   credit-service:
-    build: ./credit-service
+    build: ../credit-service
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_URL: http://discovery-server:8761/eureka/
@@ -216,7 +216,7 @@ services:
         condition: service_healthy
 
   transaction-service:
-    build: ./transaction-service
+    build: ../transaction-service
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_URL: http://discovery-server:8761/eureka/
@@ -238,7 +238,7 @@ services:
         condition: service_healthy
 
   auth-service:
-    build: ./auth-service
+    build: ../auth-service
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_URL: http://discovery-server:8761/eureka/
@@ -261,7 +261,7 @@ services:
 
   # Sin API: solo consume y publica eventos; no se registra en Eureka.
   debt-service:
-    build: ./debt-service
+    build: ../debt-service
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_URL: http://discovery-server:8761/eureka/
@@ -281,7 +281,7 @@ services:
 
   # Monedero móvil Yanki: solo eventos con los demás microservicios (no llama a sus APIs REST).
   yanki-service:
-    build: ./yanki-service
+    build: ../yanki-service
     environment:
       CONFIG_SERVER_URL: http://config-server:8888
       EUREKA_URL: http://discovery-server:8761/eureka/

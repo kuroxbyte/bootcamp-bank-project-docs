@@ -30,7 +30,7 @@ que vence mañana queda vencido de inmediato. Por eso la solución se levanta co
 docker compose -f docker-compose.yml -f docker-compose.e2e.yml up --build
 ```
 
-Desde la terminal, con la solución levantada así:
+Desde la terminal, en `bank-project-docs` y con la solución levantada así:
 
 ```bash
 docker run --rm --network bank_default -v "$PWD/postman:/etc/newman" postman/newman:6-alpine \
