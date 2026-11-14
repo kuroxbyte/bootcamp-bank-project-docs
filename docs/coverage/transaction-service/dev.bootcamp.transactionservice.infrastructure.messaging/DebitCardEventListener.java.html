@@ -12,9 +12,9 @@ import tools.jackson.databind.json.JsonMapper;
 import java.util.Set;
 
 /**
- * Consume el tópico {@code debit-card-events} de account-service y guarda cada tarjeta en la copia
- * local. Cada evento trae el estado completo de la tarjeta. El contrato está en
- * {@code docs/events/asyncapi.yaml} del repositorio raíz.
+ * Consume el tópico {@code debit-card-events} de account-service: guarda cada tarjeta en la copia
+ * local (cada evento trae su estado completo) y quita las dadas de baja ({@code DebitCardClosed}).
+ * El contrato está en {@code docs/events/asyncapi.yaml} del repositorio raíz.
  *
  * &lt;p&gt;Ignora los tipos de evento que no conoce. Si guardar falla, la excepción hace que Kafka
  * vuelva a entregar el mensaje.
@@ -24,8 +24,9 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class DebitCardEventListener {
 
-<span class="fc" id="L27">    private static final Set&lt;String&gt; CARD_EVENTS =</span>
-<span class="fc" id="L28">            Set.of(&quot;DebitCardIssued&quot;, &quot;DebitCardAccountsUpdated&quot;);</span>
+    private static final String DEBIT_CARD_CLOSED = &quot;DebitCardClosed&quot;;
+<span class="fc" id="L28">    private static final Set&lt;String&gt; CARD_EVENTS =</span>
+<span class="fc" id="L29">            Set.of(&quot;DebitCardIssued&quot;, &quot;DebitCardAccountsUpdated&quot;);</span>
 
     private final SaveDebitCardUseCase saveDebitCardUseCase;
     private final JsonMapper jsonMapper;
@@ -37,18 +38,24 @@ public class DebitCardEventListener {
      */
     @KafkaListener(topics = &quot;${messaging.topics.debit-card-events}&quot;)
     public void onDebitCardEvent(String message) {
-<span class="fc" id="L40">        JsonNode event = jsonMapper.readTree(message);</span>
-<span class="fc" id="L41">        String eventType = event.path(&quot;eventType&quot;).asString();</span>
-<span class="fc bfc" id="L42" title="All 2 branches covered.">        if (!CARD_EVENTS.contains(eventType)) {</span>
-<span class="fc" id="L43">            log.debug(&quot;Ignoring debit card event type={}&quot;, eventType);</span>
-<span class="fc" id="L44">            return;</span>
+<span class="fc" id="L41">        JsonNode event = jsonMapper.readTree(message);</span>
+<span class="fc" id="L42">        String eventType = event.path(&quot;eventType&quot;).asString();</span>
+<span class="fc bfc" id="L43" title="All 2 branches covered.">        if (DEBIT_CARD_CLOSED.equals(eventType)) {</span>
+<span class="fc" id="L44">            String debitCardId = event.get(&quot;debitCardId&quot;).asString();</span>
+<span class="fc" id="L45">            saveDebitCardUseCase.close(debitCardId).blockingAwait();</span>
+<span class="fc" id="L46">            log.info(&quot;DebitCardClosed processed debitCardId={}&quot;, debitCardId);</span>
+<span class="fc" id="L47">            return;</span>
         }
-<span class="fc" id="L46">        DebitCard card = new DebitCard(</span>
-<span class="fc" id="L47">                event.get(&quot;debitCardId&quot;).asString(),</span>
-<span class="fc" id="L48">                event.get(&quot;customerId&quot;).asString(),</span>
-<span class="fc" id="L49">                event.get(&quot;primaryAccountId&quot;).asString());</span>
-<span class="fc" id="L50">        saveDebitCardUseCase.execute(card).blockingAwait();</span>
-<span class="fc" id="L51">        log.info(&quot;{} saved debitCardId={}&quot;, eventType, card.id());</span>
-<span class="fc" id="L52">    }</span>
+<span class="fc bfc" id="L49" title="All 2 branches covered.">        if (!CARD_EVENTS.contains(eventType)) {</span>
+<span class="fc" id="L50">            log.debug(&quot;Ignoring debit card event type={}&quot;, eventType);</span>
+<span class="fc" id="L51">            return;</span>
+        }
+<span class="fc" id="L53">        DebitCard card = new DebitCard(</span>
+<span class="fc" id="L54">                event.get(&quot;debitCardId&quot;).asString(),</span>
+<span class="fc" id="L55">                event.get(&quot;customerId&quot;).asString(),</span>
+<span class="fc" id="L56">                event.get(&quot;primaryAccountId&quot;).asString());</span>
+<span class="fc" id="L57">        saveDebitCardUseCase.execute(card).blockingAwait();</span>
+<span class="fc" id="L58">        log.info(&quot;{} saved debitCardId={}&quot;, eventType, card.id());</span>
+<span class="fc" id="L59">    }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

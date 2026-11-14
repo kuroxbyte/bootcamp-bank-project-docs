@@ -105,9 +105,28 @@ public class WalletPersistenceAdapter implements WalletRepository {
 <span class="fc" id="L105">                mongoRepository.findAndRestoreBalanceById(walletId, new Decimal128(balance)));</span>
     }
 
+    @Override
+    public Completable updateContact(String walletId, String imei, String email) {
+<span class="fc" id="L110">        return Completable.fromPublisher(</span>
+<span class="fc" id="L111">                mongoRepository.findAndSetContactById(walletId, imei, email));</span>
+    }
+
+    @Override
+    public Single&lt;Boolean&gt; close(String walletId, BigDecimal expectedBalance) {
+<span class="fc" id="L116">        return Single.fromPublisher(mongoRepository.findAndCloseByIdAndStatusAndBalance(</span>
+                        walletId, ACTIVE, new Decimal128(expectedBalance)))
+<span class="fc bfc" id="L118" title="All 2 branches covered.">                .map(modified -&gt; modified == 1);</span>
+    }
+
+    @Override
+    public Completable releaseDebitCard(String debitCardId) {
+<span class="fc" id="L123">        return Completable.fromPublisher(</span>
+<span class="fc" id="L124">                mongoRepository.findAndUnsetDebitCardIdByDebitCardId(debitCardId));</span>
+    }
+
     // Monedero activo y sin tarjeta: el único que usa su propio saldo.
     private static boolean isAvailable(WalletDocument document) {
-<span class="fc bfc" id="L110" title="All 4 branches covered.">        return ACTIVE.equals(document.getStatus()) &amp;&amp; document.getDebitCardId() == null;</span>
+<span class="fc bfc" id="L129" title="All 4 branches covered.">        return ACTIVE.equals(document.getStatus()) &amp;&amp; document.getDebitCardId() == null;</span>
     }
 
     /**
@@ -120,37 +139,37 @@ public class WalletPersistenceAdapter implements WalletRepository {
          * Crea la señal sin traza: solo sirve para reintentar.
          */
         ConcurrentBalanceChange() {
-<span class="nc" id="L123">            super(&quot;El saldo del monedero cambió durante la asociación&quot;, null, false, false);</span>
-<span class="nc" id="L124">        }</span>
+<span class="nc" id="L142">            super(&quot;El saldo del monedero cambió durante la asociación&quot;, null, false, false);</span>
+<span class="nc" id="L143">        }</span>
     }
 
     private static WalletDocument toDocument(Wallet wallet) {
-<span class="fc" id="L128">        return new WalletDocument(</span>
-<span class="fc" id="L129">                wallet.getId(),</span>
-<span class="fc" id="L130">                wallet.getDocumentType().name(),</span>
-<span class="fc" id="L131">                wallet.getDocumentNumber(),</span>
-<span class="fc" id="L132">                wallet.getPhone(),</span>
-<span class="fc" id="L133">                wallet.getImei(),</span>
-<span class="fc" id="L134">                wallet.getEmail(),</span>
-<span class="fc" id="L135">                wallet.getBalance(),</span>
-<span class="fc" id="L136">                wallet.getDebitCardId(),</span>
-<span class="fc" id="L137">                wallet.getStatus().name(),</span>
-<span class="fc" id="L138">                wallet.getCreatedAt());</span>
+<span class="fc" id="L147">        return new WalletDocument(</span>
+<span class="fc" id="L148">                wallet.getId(),</span>
+<span class="fc" id="L149">                wallet.getDocumentType().name(),</span>
+<span class="fc" id="L150">                wallet.getDocumentNumber(),</span>
+<span class="fc" id="L151">                wallet.getPhone(),</span>
+<span class="fc" id="L152">                wallet.getImei(),</span>
+<span class="fc" id="L153">                wallet.getEmail(),</span>
+<span class="fc" id="L154">                wallet.getBalance(),</span>
+<span class="fc" id="L155">                wallet.getDebitCardId(),</span>
+<span class="fc" id="L156">                wallet.getStatus().name(),</span>
+<span class="fc" id="L157">                wallet.getCreatedAt());</span>
     }
 
     private static Wallet toDomain(WalletDocument document) {
-<span class="fc" id="L142">        Wallet wallet = new Wallet(</span>
-<span class="fc" id="L143">                DocumentType.valueOf(document.getDocumentType()),</span>
-<span class="fc" id="L144">                document.getDocumentNumber(),</span>
-<span class="fc" id="L145">                document.getPhone(),</span>
-<span class="fc" id="L146">                document.getImei(),</span>
-<span class="fc" id="L147">                document.getEmail());</span>
-<span class="fc" id="L148">        wallet.setId(document.getId());</span>
-<span class="fc" id="L149">        wallet.setBalance(document.getBalance());</span>
-<span class="fc" id="L150">        wallet.setDebitCardId(document.getDebitCardId());</span>
-<span class="fc" id="L151">        wallet.setStatus(WalletStatus.valueOf(document.getStatus()));</span>
-<span class="fc" id="L152">        wallet.setCreatedAt(document.getCreatedAt());</span>
-<span class="fc" id="L153">        return wallet;</span>
+<span class="fc" id="L161">        Wallet wallet = new Wallet(</span>
+<span class="fc" id="L162">                DocumentType.valueOf(document.getDocumentType()),</span>
+<span class="fc" id="L163">                document.getDocumentNumber(),</span>
+<span class="fc" id="L164">                document.getPhone(),</span>
+<span class="fc" id="L165">                document.getImei(),</span>
+<span class="fc" id="L166">                document.getEmail());</span>
+<span class="fc" id="L167">        wallet.setId(document.getId());</span>
+<span class="fc" id="L168">        wallet.setBalance(document.getBalance());</span>
+<span class="fc" id="L169">        wallet.setDebitCardId(document.getDebitCardId());</span>
+<span class="fc" id="L170">        wallet.setStatus(WalletStatus.valueOf(document.getStatus()));</span>
+<span class="fc" id="L171">        wallet.setCreatedAt(document.getCreatedAt());</span>
+<span class="fc" id="L172">        return wallet;</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

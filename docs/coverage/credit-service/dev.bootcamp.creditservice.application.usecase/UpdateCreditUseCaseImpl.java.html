@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UpdateCreditUseCaseImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">credit-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.creditservice.application.usecase</a> &gt; <span class="el_source">UpdateCreditUseCaseImpl.java</span></div><h1>UpdateCreditUseCaseImpl.java</h1><pre class="source lang-java linenums">package dev.bootcamp.creditservice.application.usecase;
+
+import dev.bootcamp.creditservice.application.port.CreditDebtClient;
+import dev.bootcamp.creditservice.application.port.CreditEventPublisher;
+import dev.bootcamp.creditservice.application.port.CreditRepository;
+import dev.bootcamp.creditservice.domain.exception.BusinessRuleException;
+import dev.bootcamp.creditservice.domain.model.credit.Credit;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
+
+/**
+ * Implementación de {@link UpdateCreditUseCase}.
+ */
+@RequiredArgsConstructor
+public class UpdateCreditUseCaseImpl implements UpdateCreditUseCase {
+    private final CreditRepository creditRepository;
+    private final CreditDebtClient creditDebtClient;
+    private final CreditEventPublisher creditEventPublisher;
+    private final Clock clock;
+
+    @Override
+    public Single&lt;Credit&gt; update(String creditId, LocalDate dueDate) {
+<span class="fc" id="L28">        return GetCreditsUseCaseImpl.findActive(creditRepository, creditId)</span>
+<span class="fc" id="L29">                .map(credit -&gt; credit.withDueDate(dueDate))</span>
+<span class="fc" id="L30">                .flatMap(creditRepository::save)</span>
+<span class="fc" id="L31">                .flatMap(saved -&gt; creditEventPublisher.publishCreditUpdated(saved)</span>
+<span class="fc" id="L32">                        .andThen(Single.just(saved)));</span>
+    }
+
+    @Override
+    public Completable close(String creditId) {
+<span class="fc" id="L37">        return GetCreditsUseCaseImpl.findActive(creditRepository, creditId)</span>
+<span class="fc" id="L38">                .flatMap(credit -&gt; creditDebtClient</span>
+<span class="fc" id="L39">                        .paidAmount(creditId, credit.getCustomer().id())</span>
+<span class="fc" id="L40">                        .flatMap(paid -&gt; {</span>
+<span class="fc" id="L41">                            BigDecimal debt = credit.getAmount().subtract(paid);</span>
+<span class="fc bfc" id="L42" title="All 2 branches covered.">                            if (debt.signum() &gt; 0) {</span>
+<span class="fc" id="L43">                                return Single.&lt;Credit&gt;error(new BusinessRuleException(</span>
+<span class="fc" id="L44">                                        &quot;El crédito tiene una deuda de &quot; + debt.toPlainString()</span>
+                                                + &quot;; debe pagarse por completo para darlo de&quot;
+                                                + &quot; baja&quot;));
+                            }
+<span class="fc" id="L48">                            credit.close(LocalDate.now(clock));</span>
+<span class="fc" id="L49">                            return creditRepository.save(credit);</span>
+                        }))
+<span class="fc" id="L51">                .flatMapCompletable(creditEventPublisher::publishCreditClosed);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

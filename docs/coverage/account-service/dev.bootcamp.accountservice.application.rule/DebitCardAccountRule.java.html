@@ -8,8 +8,8 @@ import io.reactivex.rxjava3.core.Single;
 import lombok.RequiredArgsConstructor;
 
 /**
- * Regla para asociar una cuenta a una tarjeta de débito: la cuenta debe existir, ser del cliente y
- * no estar asociada a ninguna otra tarjeta (una cuenta, una tarjeta).
+ * Regla para asociar una cuenta a una tarjeta de débito: la cuenta debe existir, estar activa, ser
+ * del cliente y no estar asociada a ninguna otra tarjeta activa (una cuenta, una tarjeta).
  */
 @RequiredArgsConstructor
 public class DebitCardAccountRule {
@@ -25,15 +25,16 @@ public class DebitCardAccountRule {
      */
     public Completable verify(String customerId, String accountId) {
 <span class="fc" id="L27">        return bankAccountRepository.findById(accountId)</span>
-<span class="fc" id="L28">                .filter(account -&gt; account.getCustomer().id().equals(customerId))</span>
-<span class="fc" id="L29">                .switchIfEmpty(Single.error(() -&gt; new BusinessRuleException(</span>
+<span class="pc bpc" id="L28" title="1 of 2 branches missed.">                .filter(account -&gt; !account.isClosed()</span>
+<span class="fc bfc" id="L29" title="All 2 branches covered.">                        &amp;&amp; account.getCustomer().id().equals(customerId))</span>
+<span class="fc" id="L30">                .switchIfEmpty(Single.error(() -&gt; new BusinessRuleException(</span>
                         &quot;La cuenta &quot; + accountId + &quot; no existe o no es del cliente&quot;)))
-<span class="fc" id="L31">                .flatMapCompletable(account -&gt; debitCardRepository.existsByAccountId(accountId)</span>
-<span class="fc bfc" id="L32" title="All 2 branches covered.">                        .flatMapCompletable(associated -&gt; associated</span>
-<span class="fc" id="L33">                                ? Completable.error(new BusinessRuleException(</span>
+<span class="fc" id="L32">                .flatMapCompletable(account -&gt; debitCardRepository.existsByAccountId(accountId)</span>
+<span class="fc bfc" id="L33" title="All 2 branches covered.">                        .flatMapCompletable(associated -&gt; associated</span>
+<span class="fc" id="L34">                                ? Completable.error(new BusinessRuleException(</span>
                                         &quot;La cuenta &quot; + accountId
                                                 + &quot; ya está asociada a una tarjeta de débito&quot;))
-<span class="fc" id="L36">                                : Completable.complete()));</span>
+<span class="fc" id="L37">                                : Completable.complete()));</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

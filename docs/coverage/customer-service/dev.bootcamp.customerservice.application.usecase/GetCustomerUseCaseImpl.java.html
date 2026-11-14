@@ -3,6 +3,7 @@
 import dev.bootcamp.customerservice.application.port.CustomerRepository;
 import dev.bootcamp.customerservice.domain.exception.NotFoundException;
 import dev.bootcamp.customerservice.domain.model.customer.Customer;
+import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.core.Single;
 import lombok.RequiredArgsConstructor;
 
@@ -15,9 +16,24 @@ public class GetCustomerUseCaseImpl implements GetCustomerUseCase {
 
     @Override
     public Single&lt;Customer&gt; execute(String customerId) {
-<span class="fc" id="L18">        return customerRepository</span>
-<span class="fc" id="L19">                .findById(customerId)</span>
-<span class="fc" id="L20">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(&quot;El cliente no existe&quot;)));</span>
+<span class="fc" id="L19">        return findActive(customerRepository, customerId);</span>
+    }
+
+    @Override
+    public Flowable&lt;Customer&gt; findAll() {
+<span class="fc" id="L24">        return customerRepository.findAllActive();</span>
+    }
+
+    /**
+     * Busca un cliente activo.
+     *
+     * @return el cliente; error {@link NotFoundException} si no existe o fue dado de baja
+     */
+    static Single&lt;Customer&gt; findActive(CustomerRepository customerRepository, String customerId) {
+<span class="fc" id="L33">        return customerRepository</span>
+<span class="fc" id="L34">                .findById(customerId)</span>
+<span class="fc bfc" id="L35" title="All 2 branches covered.">                .filter(customer -&gt; !customer.isClosed())</span>
+<span class="fc" id="L36">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(&quot;El cliente no existe&quot;)));</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

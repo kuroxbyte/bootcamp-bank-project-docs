@@ -74,20 +74,62 @@ public class Wallet {
 <span class="fc bfc" id="L74" title="All 2 branches covered.">        return debitCardId != null;</span>
     }
 
+    /**
+     * Indica si el monedero fue dado de baja.
+     */
+    public boolean isClosed() {
+<span class="fc bfc" id="L81" title="All 2 branches covered.">        return status == WalletStatus.CLOSED;</span>
+    }
+
+    /**
+     * Valida los nuevos datos de contacto del monedero: el IMEI de otro celular y el correo. El
+     * documento y el celular no cambian (el celular identifica al monedero).
+     *
+     * @return un monedero con los nuevos datos y el mismo id, saldo, tarjeta y estado
+     * @throws BusinessRuleException si el IMEI o el correo no son válidos
+     */
+    public Wallet withContact(String newImei, String newEmail) {
+<span class="fc" id="L92">        Wallet updated = new Wallet(documentType, documentNumber, phone, newImei, newEmail);</span>
+<span class="fc" id="L93">        updated.setId(id);</span>
+<span class="fc" id="L94">        updated.setBalance(balance);</span>
+<span class="fc" id="L95">        updated.setDebitCardId(debitCardId);</span>
+<span class="fc" id="L96">        updated.setStatus(status);</span>
+<span class="fc" id="L97">        updated.setCreatedAt(createdAt);</span>
+<span class="fc" id="L98">        return updated;</span>
+    }
+
+    /**
+     * Verifica que el monedero se pueda dar de baja: debe estar activo (no asociando una tarjeta)
+     * y, si usa su propio saldo, tenerlo en 0. Con tarjeta, el dinero está en la cuenta y la
+     * tarjeta queda libre.
+     *
+     * @throws BusinessRuleException si no se puede dar de baja
+     */
+    public void validateClosing() {
+<span class="fc bfc" id="L109" title="All 2 branches covered.">        if (status != WalletStatus.ACTIVE) {</span>
+<span class="fc" id="L110">            throw new BusinessRuleException(</span>
+                    &quot;El monedero está asociando una tarjeta; intente en unos segundos&quot;);
+        }
+<span class="fc bfc" id="L113" title="All 4 branches covered.">        if (!hasDebitCard() &amp;&amp; balance.signum() != 0) {</span>
+<span class="fc" id="L114">            throw new BusinessRuleException(&quot;El monedero tiene saldo &quot;</span>
+<span class="fc" id="L115">                    + balance.toPlainString() + &quot;; debe quedar en 0 para darlo de baja&quot;);</span>
+        }
+<span class="fc" id="L117">    }</span>
+
     // Dígito de control de Luhn, el que usa el IMEI.
     private static boolean luhn(String digits) {
-<span class="fc" id="L79">        int sum = 0;</span>
-<span class="fc bfc" id="L80" title="All 2 branches covered.">        for (int i = 0; i &lt; digits.length(); i++) {</span>
-<span class="fc" id="L81">            int digit = digits.charAt(digits.length() - 1 - i) - '0';</span>
-<span class="fc bfc" id="L82" title="All 2 branches covered.">            if (i % 2 == 1) {</span>
-<span class="fc" id="L83">                digit *= 2;</span>
-<span class="fc bfc" id="L84" title="All 2 branches covered.">                if (digit &gt; 9) {</span>
-<span class="fc" id="L85">                    digit -= 9;</span>
+<span class="fc" id="L121">        int sum = 0;</span>
+<span class="fc bfc" id="L122" title="All 2 branches covered.">        for (int i = 0; i &lt; digits.length(); i++) {</span>
+<span class="fc" id="L123">            int digit = digits.charAt(digits.length() - 1 - i) - '0';</span>
+<span class="fc bfc" id="L124" title="All 2 branches covered.">            if (i % 2 == 1) {</span>
+<span class="fc" id="L125">                digit *= 2;</span>
+<span class="fc bfc" id="L126" title="All 2 branches covered.">                if (digit &gt; 9) {</span>
+<span class="fc" id="L127">                    digit -= 9;</span>
                 }
             }
-<span class="fc" id="L88">            sum += digit;</span>
+<span class="fc" id="L130">            sum += digit;</span>
         }
-<span class="fc bfc" id="L90" title="All 2 branches covered.">        return sum % 10 == 0;</span>
+<span class="fc bfc" id="L132" title="All 2 branches covered.">        return sum % 10 == 0;</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

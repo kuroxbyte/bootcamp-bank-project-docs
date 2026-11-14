@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GlobalExceptionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">customer-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.customerservice.infrastructure.web</a> &gt; <span class="el_source">GlobalExceptionHandler.java</span></div><h1>GlobalExceptionHandler.java</h1><pre class="source lang-java linenums">package dev.bootcamp.customerservice.infrastructure.web;
 
 import dev.bootcamp.customerservice.domain.exception.BusinessRuleException;
+import dev.bootcamp.customerservice.domain.exception.ForbiddenException;
 import dev.bootcamp.customerservice.domain.exception.NotFoundException;
+import dev.bootcamp.customerservice.infrastructure.client.ServiceUnavailableException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -17,22 +19,42 @@ import reactor.core.publisher.Mono;
  * &lt;ul&gt;
  *   &lt;li&gt;400: datos de entrada inválidos o falta un header; lo resuelve {@link
  *       ResponseEntityExceptionHandler}.
+ *   &lt;li&gt;403: {@link ForbiddenException}.
  *   &lt;li&gt;404: {@link NotFoundException}.
  *   &lt;li&gt;422: {@link BusinessRuleException}.
+ *   &lt;li&gt;503: {@link ServiceUnavailableException}; el detalle ya lo registra el cliente HTTP.
  *   &lt;li&gt;500: cualquier otro error inesperado.
  * &lt;/ul&gt;
  */
-<span class="fc" id="L25">@Slf4j</span>
+<span class="fc" id="L29">@Slf4j</span>
 @RestControllerAdvice
-<span class="fc" id="L27">public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {</span>
+<span class="fc" id="L31">public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {</span>
+
+    /**
+     * Responde 403 cuando quien hace la petición no puede realizar la operación.
+     */
+    @ExceptionHandler(ForbiddenException.class)
+    public Mono&lt;ResponseEntity&lt;ProblemDetail&gt;&gt; handleForbidden(ForbiddenException ex) {
+<span class="fc" id="L38">        log.warn(&quot;Operation forbidden: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L39">        return problem(HttpStatus.FORBIDDEN, &quot;Operación no permitida&quot;, ex.getMessage());</span>
+    }
+
+    /**
+     * Responde 503 cuando otro microservicio no está disponible.
+     */
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public Mono&lt;ResponseEntity&lt;ProblemDetail&gt;&gt; handleServiceUnavailable(
+            ServiceUnavailableException ex) {
+<span class="fc" id="L48">        return problem(HttpStatus.SERVICE_UNAVAILABLE, &quot;Servicio no disponible&quot;, ex.getMessage());</span>
+    }
 
     /**
      * Responde 404 cuando el recurso no existe o no pertenece al cliente.
      */
     @ExceptionHandler(NotFoundException.class)
     public Mono&lt;ResponseEntity&lt;ProblemDetail&gt;&gt; handleNotFound(NotFoundException ex) {
-<span class="fc" id="L34">        log.warn(&quot;Resource not found: {}&quot;, ex.getMessage());</span>
-<span class="fc" id="L35">        return problem(HttpStatus.NOT_FOUND, &quot;Recurso no encontrado&quot;, ex.getMessage());</span>
+<span class="fc" id="L56">        log.warn(&quot;Resource not found: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L57">        return problem(HttpStatus.NOT_FOUND, &quot;Recurso no encontrado&quot;, ex.getMessage());</span>
     }
 
     /**
@@ -40,11 +62,11 @@ import reactor.core.publisher.Mono;
      */
     @ExceptionHandler(BusinessRuleException.class)
     public Mono&lt;ResponseEntity&lt;ProblemDetail&gt;&gt; handleBusinessRule(BusinessRuleException ex) {
-<span class="fc" id="L43">        log.warn(&quot;Business rule violated: {}&quot;, ex.getMessage());</span>
-<span class="fc" id="L44">        return problem(</span>
+<span class="fc" id="L65">        log.warn(&quot;Business rule violated: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L66">        return problem(</span>
                 HttpStatus.UNPROCESSABLE_CONTENT,
                 &quot;Regla de negocio incumplida&quot;,
-<span class="fc" id="L47">                ex.getMessage());</span>
+<span class="fc" id="L69">                ex.getMessage());</span>
     }
 
     /**
@@ -52,8 +74,8 @@ import reactor.core.publisher.Mono;
      */
     @ExceptionHandler(Exception.class)
     public Mono&lt;ResponseEntity&lt;ProblemDetail&gt;&gt; handleUnexpected(Exception ex) {
-<span class="nc" id="L55">        log.error(&quot;Unexpected error&quot;, ex);</span>
-<span class="nc" id="L56">        return problem(</span>
+<span class="nc" id="L77">        log.error(&quot;Unexpected error&quot;, ex);</span>
+<span class="nc" id="L78">        return problem(</span>
                 HttpStatus.INTERNAL_SERVER_ERROR, &quot;Error interno&quot;, &quot;Ocurrió un error inesperado&quot;);
     }
 
@@ -61,9 +83,9 @@ import reactor.core.publisher.Mono;
             HttpStatus status,
             String title,
             String detail) {
-<span class="fc" id="L64">        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);</span>
-<span class="fc" id="L65">        problem.setTitle(title);</span>
-<span class="fc" id="L66">        return Mono.just(ResponseEntity.status(status).body(problem));</span>
+<span class="fc" id="L86">        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);</span>
+<span class="fc" id="L87">        problem.setTitle(title);</span>
+<span class="fc" id="L88">        return Mono.just(ResponseEntity.status(status).body(problem));</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

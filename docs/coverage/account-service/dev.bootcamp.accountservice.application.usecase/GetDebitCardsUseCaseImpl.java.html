@@ -27,15 +27,16 @@ public class GetDebitCardsUseCaseImpl implements GetDebitCardsUseCase {
     /**
      * Busca la tarjeta y verifica que sea del cliente.
      *
-     * @return la tarjeta; error {@link NotFoundException} si no existe o es de otro cliente
+     * @return la tarjeta; error {@link NotFoundException} si no existe, fue dada de baja o es de
+     *     otro cliente
      */
     static Single&lt;DebitCard&gt; findOwnedCard(
             DebitCardRepository debitCardRepository,
             String customerId,
             String debitCardId) {
-<span class="fc" id="L36">        return debitCardRepository.findById(debitCardId)</span>
-<span class="fc" id="L37">                .filter(card -&gt; card.belongsTo(customerId))</span>
-<span class="fc" id="L38">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(</span>
+<span class="fc" id="L37">        return debitCardRepository.findById(debitCardId)</span>
+<span class="fc bfc" id="L38" title="All 4 branches covered.">                .filter(card -&gt; !card.isClosed() &amp;&amp; card.belongsTo(customerId))</span>
+<span class="fc" id="L39">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(</span>
                         &quot;La tarjeta de débito no existe o no pertenece al cliente&quot;)));
     }
 }

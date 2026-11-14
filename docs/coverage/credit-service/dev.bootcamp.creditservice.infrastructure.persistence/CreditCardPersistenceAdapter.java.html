@@ -27,7 +27,7 @@ public class CreditCardPersistenceAdapter implements CreditCardRepository {
 
     @Override
     public Flowable&lt;CreditCard&gt; findByCustomerId(String customerId) {
-<span class="fc" id="L30">        return Flowable.fromPublisher(mongoRepository.findByCustomerId(customerId))</span>
+<span class="fc" id="L30">        return Flowable.fromPublisher(mongoRepository.findByCustomerIdAndClosedAtIsNull(customerId))</span>
 <span class="fc" id="L31">                .map(CreditPersistenceMapper::toDomain);</span>
     }
 

@@ -2,9 +2,12 @@
 
 import dev.bootcamp.accountservice.application.usecase.CreateBankAccountUseCase;
 import dev.bootcamp.accountservice.application.usecase.GetBankAccountsUseCase;
+import dev.bootcamp.accountservice.application.usecase.UpdateBankAccountUseCase;
+import dev.bootcamp.accountservice.domain.model.account.AccountChanges;
 import dev.bootcamp.accountservice.domain.model.account.BankAccount;
 import dev.bootcamp.accountservice.infrastructure.web.api.AccountsApi;
 import dev.bootcamp.accountservice.infrastructure.web.dto.AccountResponseDto;
+import dev.bootcamp.accountservice.infrastructure.web.dto.AccountUpdateRequestDto;
 import dev.bootcamp.accountservice.infrastructure.web.dto.CheckingAccountRequestDto;
 import dev.bootcamp.accountservice.infrastructure.web.dto.FixedTermAccountRequestDto;
 import dev.bootcamp.accountservice.infrastructure.web.dto.SavingsAccountRequestDto;
@@ -22,40 +25,41 @@ import reactor.core.publisher.Mono;
 /**
  * Endpoints de cuentas bancarias definidos en el contrato OpenAPI.
  */
-<span class="fc" id="L25">@Slf4j</span>
+<span class="fc" id="L28">@Slf4j</span>
 @RestController
 @RequiredArgsConstructor
 public class AccountController implements AccountsApi {
 
     private final CreateBankAccountUseCase createBankAccountUseCase;
     private final GetBankAccountsUseCase getBankAccountsUseCase;
+    private final UpdateBankAccountUseCase updateBankAccountUseCase;
 
     @Override
     public Mono&lt;ResponseEntity&lt;Flux&lt;AccountResponseDto&gt;&gt;&gt; listAccounts(
             String customerId,
             ServerWebExchange exchange) {
-<span class="fc" id="L37">        log.debug(&quot;Listing accounts customerId={}&quot;, customerId);</span>
-<span class="fc" id="L38">        Flux&lt;AccountResponseDto&gt; accounts =</span>
-<span class="fc" id="L39">                Flux.from(getBankAccountsUseCase.findByCustomerId(customerId))</span>
-<span class="fc" id="L40">                        .map(AccountWebMapper::toResponse);</span>
-<span class="fc" id="L41">        return Mono.just(ResponseEntity.ok(accounts));</span>
+<span class="fc" id="L41">        log.debug(&quot;Listing accounts customerId={}&quot;, customerId);</span>
+<span class="fc" id="L42">        Flux&lt;AccountResponseDto&gt; accounts =</span>
+<span class="fc" id="L43">                Flux.from(getBankAccountsUseCase.findByCustomerId(customerId))</span>
+<span class="fc" id="L44">                        .map(AccountWebMapper::toResponse);</span>
+<span class="fc" id="L45">        return Mono.just(ResponseEntity.ok(accounts));</span>
     }
 
     @Override
     public Mono&lt;ResponseEntity&lt;Flux&lt;AccountResponseDto&gt;&gt;&gt; listAllAccounts(
             ServerWebExchange exchange) {
-<span class="fc" id="L47">        log.debug(&quot;Listing all accounts for reports&quot;);</span>
-<span class="fc" id="L48">        return Mono.just(ResponseEntity.ok(</span>
-<span class="fc" id="L49">                Flux.from(getBankAccountsUseCase.findAll()).map(AccountWebMapper::toResponse)));</span>
+<span class="fc" id="L51">        log.debug(&quot;Listing all accounts for reports&quot;);</span>
+<span class="fc" id="L52">        return Mono.just(ResponseEntity.ok(</span>
+<span class="fc" id="L53">                Flux.from(getBankAccountsUseCase.findAll()).map(AccountWebMapper::toResponse)));</span>
     }
 
     @Override
     public Mono&lt;ResponseEntity&lt;AccountResponseDto&gt;&gt; getAccountById(
             String accountId,
             ServerWebExchange exchange) {
-<span class="fc" id="L56">        log.debug(&quot;Fetching account accountId={}&quot;, accountId);</span>
-<span class="fc" id="L57">        return Mono.from(getBankAccountsUseCase.findById(accountId).toFlowable())</span>
-<span class="fc" id="L58">                .map(account -&gt; ResponseEntity.ok(AccountWebMapper.toResponse(account)));</span>
+<span class="fc" id="L60">        log.debug(&quot;Fetching account accountId={}&quot;, accountId);</span>
+<span class="fc" id="L61">        return Mono.from(getBankAccountsUseCase.findById(accountId).toFlowable())</span>
+<span class="fc" id="L62">                .map(account -&gt; ResponseEntity.ok(AccountWebMapper.toResponse(account)));</span>
     }
 
     @Override
@@ -63,13 +67,13 @@ public class AccountController implements AccountsApi {
             String customerId,
             Mono&lt;SavingsAccountRequestDto&gt; savingsAccountRequestDto,
             ServerWebExchange exchange) {
-<span class="fc" id="L66">        return savingsAccountRequestDto.flatMap(</span>
+<span class="fc" id="L70">        return savingsAccountRequestDto.flatMap(</span>
                 request -&gt;
-<span class="fc" id="L68">                        created(</span>
-<span class="fc" id="L69">                                createBankAccountUseCase.openSavingsAccount(</span>
+<span class="fc" id="L72">                        created(</span>
+<span class="fc" id="L73">                                createBankAccountUseCase.openSavingsAccount(</span>
                                         customerId,
-<span class="fc" id="L71">                                        request.getMaxMonthlyMovements(),</span>
-<span class="fc" id="L72">                                        request.getOpeningAmount())));</span>
+<span class="fc" id="L75">                                        request.getMaxMonthlyMovements(),</span>
+<span class="fc" id="L76">                                        request.getOpeningAmount())));</span>
     }
 
     @Override
@@ -77,15 +81,15 @@ public class AccountController implements AccountsApi {
             String customerId,
             Mono&lt;CheckingAccountRequestDto&gt; checkingAccountRequestDto,
             ServerWebExchange exchange) {
-<span class="fc" id="L80">        return checkingAccountRequestDto.flatMap(</span>
+<span class="fc" id="L84">        return checkingAccountRequestDto.flatMap(</span>
                 request -&gt;
-<span class="fc" id="L82">                        created(</span>
-<span class="fc" id="L83">                                createBankAccountUseCase.openCheckingAccount(</span>
+<span class="fc" id="L86">                        created(</span>
+<span class="fc" id="L87">                                createBankAccountUseCase.openCheckingAccount(</span>
                                         customerId,
-<span class="fc" id="L85">                                        request.getMaintenanceFee(),</span>
-<span class="fc" id="L86">                                        request.getHolderIds(),</span>
-<span class="fc" id="L87">                                        request.getAuthorizedSignerIds(),</span>
-<span class="fc" id="L88">                                        request.getOpeningAmount())));</span>
+<span class="fc" id="L89">                                        request.getMaintenanceFee(),</span>
+<span class="fc" id="L90">                                        request.getHolderIds(),</span>
+<span class="fc" id="L91">                                        request.getAuthorizedSignerIds(),</span>
+<span class="fc" id="L92">                                        request.getOpeningAmount())));</span>
     }
 
     @Override
@@ -93,29 +97,62 @@ public class AccountController implements AccountsApi {
             String customerId,
             Mono&lt;FixedTermAccountRequestDto&gt; fixedTermAccountRequestDto,
             ServerWebExchange exchange) {
-<span class="fc" id="L96">        return fixedTermAccountRequestDto.flatMap(</span>
+<span class="fc" id="L100">        return fixedTermAccountRequestDto.flatMap(</span>
                 request -&gt;
-<span class="fc" id="L98">                        created(</span>
-<span class="fc" id="L99">                                createBankAccountUseCase.openFixedTermAccount(</span>
+<span class="fc" id="L102">                        created(</span>
+<span class="fc" id="L103">                                createBankAccountUseCase.openFixedTermAccount(</span>
                                         customerId,
-<span class="fc" id="L101">                                        request.getMovementDayOfMonth(),</span>
-<span class="fc" id="L102">                                        request.getOpeningAmount())));</span>
+<span class="fc" id="L105">                                        request.getMovementDayOfMonth(),</span>
+<span class="fc" id="L106">                                        request.getOpeningAmount())));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;AccountResponseDto&gt;&gt; updateAccount(
+            String accountId,
+            String adminId,
+            Mono&lt;AccountUpdateRequestDto&gt; accountUpdateRequestDto,
+            ServerWebExchange exchange) {
+<span class="fc" id="L115">        return accountUpdateRequestDto</span>
+<span class="fc" id="L116">                .flatMap(request -&gt; Mono.from(updateBankAccountUseCase</span>
+<span class="fc" id="L117">                        .update(accountId, new AccountChanges(</span>
+<span class="fc" id="L118">                                request.getMaintenanceFee(),</span>
+<span class="fc" id="L119">                                request.getHolderIds(),</span>
+<span class="fc" id="L120">                                request.getAuthorizedSignerIds(),</span>
+<span class="fc" id="L121">                                request.getMaxMonthlyMovements(),</span>
+<span class="fc" id="L122">                                request.getMinimumDailyAverage(),</span>
+<span class="fc" id="L123">                                request.getMovementDayOfMonth()))</span>
+<span class="fc" id="L124">                        .toFlowable()))</span>
+<span class="fc" id="L125">                .doOnNext(account -&gt; log.info(</span>
+                        &quot;Account updated accountId={} adminId={}&quot;, accountId, adminId))
+<span class="fc" id="L127">                .map(account -&gt; ResponseEntity.ok(AccountWebMapper.toResponse(account)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;Void&gt;&gt; deleteAccount(
+            String accountId,
+            String adminId,
+            ServerWebExchange exchange) {
+<span class="fc" id="L135">        return Mono.from(updateBankAccountUseCase.close(accountId).toFlowable())</span>
+<span class="fc" id="L136">                .then(Mono.fromCallable(() -&gt; {</span>
+<span class="fc" id="L137">                    log.info(&quot;Account closed accountId={} adminId={}&quot;, accountId, adminId);</span>
+<span class="fc" id="L138">                    return ResponseEntity.noContent().&lt;Void&gt;build();</span>
+                }));
     }
 
     private static Mono&lt;ResponseEntity&lt;AccountResponseDto&gt;&gt; created(
             Single&lt;? extends BankAccount&gt; account) {
-<span class="fc" id="L107">        return Mono.from(account.toFlowable())</span>
-<span class="fc" id="L108">                .doOnNext(</span>
+<span class="fc" id="L144">        return Mono.from(account.toFlowable())</span>
+<span class="fc" id="L145">                .doOnNext(</span>
                         saved -&gt;
-<span class="fc" id="L110">                                log.info(</span>
+<span class="fc" id="L147">                                log.info(</span>
                                         &quot;Account opened accountId={} customerId={} type={}&quot;,
-<span class="fc" id="L112">                                        saved.getId(),</span>
-<span class="fc" id="L113">                                        saved.getCustomer().id(),</span>
-<span class="fc" id="L114">                                        saved.getClass().getSimpleName()))</span>
-<span class="fc" id="L115">                .map(</span>
+<span class="fc" id="L149">                                        saved.getId(),</span>
+<span class="fc" id="L150">                                        saved.getCustomer().id(),</span>
+<span class="fc" id="L151">                                        saved.getClass().getSimpleName()))</span>
+<span class="fc" id="L152">                .map(</span>
                         saved -&gt;
-<span class="fc" id="L117">                                ResponseEntity.status(HttpStatus.CREATED)</span>
-<span class="fc" id="L118">                                        .body(AccountWebMapper.toResponse(saved)));</span>
+<span class="fc" id="L154">                                ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="fc" id="L155">                                        .body(AccountWebMapper.toResponse(saved)));</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

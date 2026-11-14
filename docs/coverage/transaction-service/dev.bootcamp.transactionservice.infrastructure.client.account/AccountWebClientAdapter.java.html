@@ -58,7 +58,9 @@ public class AccountWebClientAdapter implements AccountClient {
 <span class="fc" id="L58">                        .uri(&quot;/api/v1/internal/accounts&quot;)</span>
 <span class="fc" id="L59">                        .retrieve()</span>
 <span class="fc" id="L60">                        .bodyToFlux(AccountResponseDto.class)</span>
-<span class="fc" id="L61">                        .map(AccountWebClientAdapter::toDomain),</span>
+                        // Las cuentas dadas de baja no pagan comisiones.
+<span class="fc bfc" id="L62" title="All 2 branches covered.">                        .filter(account -&gt; account.getClosedAt() == null)</span>
+<span class="fc" id="L63">                        .map(AccountWebClientAdapter::toDomain),</span>
                 SERVICE_NAME);
     }
 
@@ -66,24 +68,24 @@ public class AccountWebClientAdapter implements AccountClient {
      * Convierte la cuenta en la vista local, con la regla de movimientos de su tipo.
      */
     private static Account toDomain(AccountResponseDto response) {
-<span class="fc" id="L69">        MovementPolicy movementPolicy =</span>
-<span class="fc bfc" id="L70" title="All 3 branches covered.">                switch (response.getType()) {</span>
-<span class="fc" id="L71">                    case SAVINGS -&gt; new SavingsMovementPolicy(response.getMaxMonthlyMovements());</span>
-<span class="fc" id="L72">                    case CHECKING -&gt; new CheckingMovementPolicy();</span>
+<span class="fc" id="L71">        MovementPolicy movementPolicy =</span>
+<span class="fc bfc" id="L72" title="All 3 branches covered.">                switch (response.getType()) {</span>
+<span class="fc" id="L73">                    case SAVINGS -&gt; new SavingsMovementPolicy(response.getMaxMonthlyMovements());</span>
+<span class="fc" id="L74">                    case CHECKING -&gt; new CheckingMovementPolicy();</span>
                     case FIXED_TERM -&gt;
-<span class="fc" id="L74">                            new FixedTermMovementPolicy(response.getMovementDayOfMonth());</span>
+<span class="fc" id="L76">                            new FixedTermMovementPolicy(response.getMovementDayOfMonth());</span>
                 };
-<span class="fc" id="L76">        return new Account(</span>
-<span class="fc" id="L77">                response.getId(),</span>
-<span class="fc" id="L78">                response.getCustomerId(),</span>
+<span class="fc" id="L78">        return new Account(</span>
+<span class="fc" id="L79">                response.getId(),</span>
+<span class="fc" id="L80">                response.getCustomerId(),</span>
                 movementPolicy,
-<span class="fc" id="L80">                response.getOpeningAmount(),</span>
-<span class="fc" id="L81">                response.getOpenedAt(),</span>
-<span class="fc" id="L82">                response.getMinimumDailyAverage(),</span>
+<span class="fc" id="L82">                response.getOpeningAmount(),</span>
+<span class="fc" id="L83">                response.getOpenedAt(),</span>
+<span class="fc" id="L84">                response.getMinimumDailyAverage(),</span>
                 new TransactionFee(
-<span class="fc" id="L84">                        response.getFreeMonthlyTransactions(),</span>
-<span class="fc" id="L85">                        response.getTransactionFee()),</span>
-<span class="fc" id="L86">                response.getMaintenanceFee());</span>
+<span class="fc" id="L86">                        response.getFreeMonthlyTransactions(),</span>
+<span class="fc" id="L87">                        response.getTransactionFee()),</span>
+<span class="fc" id="L88">                response.getMaintenanceFee());</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

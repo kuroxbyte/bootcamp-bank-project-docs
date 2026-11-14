@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UpdateCreditCardUseCaseImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">credit-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.creditservice.application.usecase</a> &gt; <span class="el_source">UpdateCreditCardUseCaseImpl.java</span></div><h1>UpdateCreditCardUseCaseImpl.java</h1><pre class="source lang-java linenums">package dev.bootcamp.creditservice.application.usecase;
+
+import dev.bootcamp.creditservice.application.port.CreditCardRepository;
+import dev.bootcamp.creditservice.application.port.CreditDebtClient;
+import dev.bootcamp.creditservice.application.port.CreditEventPublisher;
+import dev.bootcamp.creditservice.domain.exception.BusinessRuleException;
+import dev.bootcamp.creditservice.domain.model.creditcard.CreditCard;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
+
+/**
+ * Implementación de {@link UpdateCreditCardUseCase}.
+ */
+@RequiredArgsConstructor
+public class UpdateCreditCardUseCaseImpl implements UpdateCreditCardUseCase {
+    private final CreditCardRepository creditCardRepository;
+    private final CreditDebtClient creditDebtClient;
+    private final CreditEventPublisher creditEventPublisher;
+    private final Clock clock;
+
+    @Override
+    public Single&lt;CreditCard&gt; update(
+            String creditCardId,
+            BigDecimal creditLimit,
+            int paymentDueDay) {
+<span class="fc" id="L31">        return GetCreditCardsUseCaseImpl.findActive(creditCardRepository, creditCardId)</span>
+<span class="fc" id="L32">                .flatMap(card -&gt; {</span>
+<span class="fc" id="L33">                    CreditCard updated = card.withTerms(creditLimit, paymentDueDay);</span>
+<span class="fc bfc" id="L34" title="All 2 branches covered.">                    return debt(card).flatMap(debt -&gt; creditLimit.compareTo(debt) &lt; 0</span>
+<span class="fc" id="L35">                            ? Single.&lt;CreditCard&gt;error(new BusinessRuleException(</span>
+                                    &quot;El límite no puede ser menor que la deuda actual de &quot;
+<span class="fc" id="L37">                                            + debt.toPlainString()))</span>
+<span class="fc" id="L38">                            : Single.just(updated));</span>
+                })
+<span class="fc" id="L40">                .flatMap(creditCardRepository::save)</span>
+<span class="fc" id="L41">                .flatMap(saved -&gt; creditEventPublisher.publishCreditCardUpdated(saved)</span>
+<span class="fc" id="L42">                        .andThen(Single.just(saved)));</span>
+    }
+
+    @Override
+    public Completable close(String creditCardId) {
+<span class="fc" id="L47">        return GetCreditCardsUseCaseImpl.findActive(creditCardRepository, creditCardId)</span>
+<span class="fc" id="L48">                .flatMap(card -&gt; debt(card).flatMap(debt -&gt; {</span>
+<span class="fc bfc" id="L49" title="All 2 branches covered.">                    if (debt.signum() &gt; 0) {</span>
+<span class="fc" id="L50">                        return Single.&lt;CreditCard&gt;error(new BusinessRuleException(</span>
+<span class="fc" id="L51">                                &quot;La tarjeta tiene una deuda de &quot; + debt.toPlainString()</span>
+                                        + &quot;; debe pagarse por completo para darla de baja&quot;));
+                    }
+<span class="fc" id="L54">                    card.close(LocalDate.now(clock));</span>
+<span class="fc" id="L55">                    return creditCardRepository.save(card);</span>
+                }))
+<span class="fc" id="L57">                .flatMapCompletable(creditEventPublisher::publishCreditCardClosed);</span>
+    }
+
+    // Deuda de la tarjeta: su límite actual menos el crédito disponible.
+    private Single&lt;BigDecimal&gt; debt(CreditCard card) {
+<span class="fc" id="L62">        return creditDebtClient.availableCredit(card.getId(), card.getCustomer().id())</span>
+<span class="fc" id="L63">                .map(available -&gt; card.getCreditLimit().subtract(available).max(BigDecimal.ZERO));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

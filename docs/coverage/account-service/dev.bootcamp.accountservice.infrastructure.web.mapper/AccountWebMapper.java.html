@@ -29,29 +29,30 @@ public final class AccountWebMapper {
 <span class="fc" id="L29">                        .freeMonthlyTransactions(</span>
 <span class="fc" id="L30">                                account.getTransactionFee().freeMonthlyTransactions())</span>
 <span class="fc" id="L31">                        .transactionFee(account.getTransactionFee().amount())</span>
-<span class="fc" id="L32">                        .holderIds(null)</span>
-<span class="fc" id="L33">                        .authorizedSignerIds(null);</span>
-<span class="fc bfc" id="L34" title="All 2 branches covered.">        if (account instanceof VipSavingsAccount vipSavings) {</span>
-<span class="fc" id="L35">            return response.type(AccountTypeDto.SAVINGS)</span>
-<span class="fc" id="L36">                    .maxMonthlyMovements(vipSavings.getMaxMonthlyMovements())</span>
-<span class="fc" id="L37">                    .minimumDailyAverage(vipSavings.getMinimumDailyAverage());</span>
+<span class="fc" id="L32">                        .closedAt(account.getClosedAt())</span>
+<span class="fc" id="L33">                        .holderIds(null)</span>
+<span class="fc" id="L34">                        .authorizedSignerIds(null);</span>
+<span class="fc bfc" id="L35" title="All 2 branches covered.">        if (account instanceof VipSavingsAccount vipSavings) {</span>
+<span class="fc" id="L36">            return response.type(AccountTypeDto.SAVINGS)</span>
+<span class="fc" id="L37">                    .maxMonthlyMovements(vipSavings.getMaxMonthlyMovements())</span>
+<span class="fc" id="L38">                    .minimumDailyAverage(vipSavings.getMinimumDailyAverage());</span>
         }
-<span class="fc bfc" id="L39" title="All 2 branches covered.">        if (account instanceof SavingsAccount savings) {</span>
-<span class="fc" id="L40">            return response.type(AccountTypeDto.SAVINGS)</span>
-<span class="fc" id="L41">                    .maxMonthlyMovements(savings.getMaxMonthlyMovements());</span>
+<span class="fc bfc" id="L40" title="All 2 branches covered.">        if (account instanceof SavingsAccount savings) {</span>
+<span class="fc" id="L41">            return response.type(AccountTypeDto.SAVINGS)</span>
+<span class="fc" id="L42">                    .maxMonthlyMovements(savings.getMaxMonthlyMovements());</span>
         }
-<span class="fc bfc" id="L43" title="All 2 branches covered.">        if (account instanceof CheckingAccount checking) {</span>
-<span class="fc" id="L44">            return response.type(AccountTypeDto.CHECKING)</span>
-<span class="fc" id="L45">                    .maintenanceFee(checking.getMaintenanceFee())</span>
-<span class="fc" id="L46">                    .holderIds(checking.getHolderIds())</span>
-<span class="fc" id="L47">                    .authorizedSignerIds(checking.getAuthorizedSignerIds());</span>
+<span class="fc bfc" id="L44" title="All 2 branches covered.">        if (account instanceof CheckingAccount checking) {</span>
+<span class="fc" id="L45">            return response.type(AccountTypeDto.CHECKING)</span>
+<span class="fc" id="L46">                    .maintenanceFee(checking.getMaintenanceFee())</span>
+<span class="fc" id="L47">                    .holderIds(checking.getHolderIds())</span>
+<span class="fc" id="L48">                    .authorizedSignerIds(checking.getAuthorizedSignerIds());</span>
         }
-<span class="pc bpc" id="L49" title="1 of 2 branches missed.">        if (account instanceof FixedTermAccount fixedTerm) {</span>
-<span class="fc" id="L50">            return response.type(AccountTypeDto.FIXED_TERM)</span>
-<span class="fc" id="L51">                    .movementDayOfMonth(fixedTerm.getMovementDayOfMonth());</span>
+<span class="pc bpc" id="L50" title="1 of 2 branches missed.">        if (account instanceof FixedTermAccount fixedTerm) {</span>
+<span class="fc" id="L51">            return response.type(AccountTypeDto.FIXED_TERM)</span>
+<span class="fc" id="L52">                    .movementDayOfMonth(fixedTerm.getMovementDayOfMonth());</span>
         }
-<span class="nc" id="L53">        throw new IllegalArgumentException(</span>
-<span class="nc" id="L54">                &quot;Tipo de cuenta no soportado: &quot; + account.getClass().getSimpleName());</span>
+<span class="nc" id="L54">        throw new IllegalArgumentException(</span>
+<span class="nc" id="L55">                &quot;Tipo de cuenta no soportado: &quot; + account.getClass().getSimpleName());</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

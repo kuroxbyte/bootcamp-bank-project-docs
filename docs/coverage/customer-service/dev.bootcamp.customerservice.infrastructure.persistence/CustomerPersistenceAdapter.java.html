@@ -2,6 +2,7 @@
 
 import dev.bootcamp.customerservice.application.port.CustomerRepository;
 import dev.bootcamp.customerservice.domain.model.customer.Customer;
+import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Single;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +12,7 @@ import org.springframework.stereotype.Component;
 /**
  * Implementa el puerto {@link CustomerRepository} con MongoDB reactivo.
  */
-<span class="fc" id="L14">@Slf4j</span>
+<span class="fc" id="L15">@Slf4j</span>
 @Component
 @RequiredArgsConstructor
 public class CustomerPersistenceAdapter implements CustomerRepository {
@@ -20,16 +21,22 @@ public class CustomerPersistenceAdapter implements CustomerRepository {
 
     @Override
     public Single&lt;Customer&gt; save(Customer customer) {
-<span class="fc" id="L23">        return Single.fromPublisher(</span>
-<span class="fc" id="L24">                        mongoRepository.save(CustomerPersistenceMapper.toDocument(customer)))</span>
-<span class="fc" id="L25">                .doOnSuccess(saved -&gt; log.debug(&quot;Customer saved customerId={}&quot;, saved.getId()))</span>
-<span class="fc" id="L26">                .map(CustomerPersistenceMapper::toDomain);</span>
+<span class="fc" id="L24">        return Single.fromPublisher(</span>
+<span class="fc" id="L25">                        mongoRepository.save(CustomerPersistenceMapper.toDocument(customer)))</span>
+<span class="fc" id="L26">                .doOnSuccess(saved -&gt; log.debug(&quot;Customer saved customerId={}&quot;, saved.getId()))</span>
+<span class="fc" id="L27">                .map(CustomerPersistenceMapper::toDomain);</span>
     }
 
     @Override
     public Maybe&lt;Customer&gt; findById(String customerId) {
-<span class="fc" id="L31">        return Maybe.fromPublisher(mongoRepository.findById(customerId))</span>
-<span class="fc" id="L32">                .map(CustomerPersistenceMapper::toDomain);</span>
+<span class="fc" id="L32">        return Maybe.fromPublisher(mongoRepository.findById(customerId))</span>
+<span class="fc" id="L33">                .map(CustomerPersistenceMapper::toDomain);</span>
+    }
+
+    @Override
+    public Flowable&lt;Customer&gt; findAllActive() {
+<span class="fc" id="L38">        return Flowable.fromPublisher(mongoRepository.findByClosedAtIsNull())</span>
+<span class="fc" id="L39">                .map(CustomerPersistenceMapper::toDomain);</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

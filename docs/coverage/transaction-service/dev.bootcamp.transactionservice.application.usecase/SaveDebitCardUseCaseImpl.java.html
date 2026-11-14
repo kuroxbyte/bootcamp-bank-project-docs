@@ -16,5 +16,10 @@ public class SaveDebitCardUseCaseImpl implements SaveDebitCardUseCase {
     public Completable execute(DebitCard debitCard) {
 <span class="fc" id="L17">        return debitCardRepository.save(debitCard);</span>
     }
+
+    @Override
+    public Completable close(String debitCardId) {
+<span class="fc" id="L22">        return debitCardRepository.deleteById(debitCardId);</span>
+    }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

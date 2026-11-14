@@ -59,34 +59,39 @@ public class DebitCardKafkaEventPublisher implements DebitCardEventPublisher {
 <span class="fc" id="L59">        return publish(&quot;DebitCardAccountsUpdated&quot;, debitCard);</span>
     }
 
+    @Override
+    public Completable publishClosed(DebitCard debitCard) {
+<span class="fc" id="L64">        return publish(&quot;DebitCardClosed&quot;, debitCard);</span>
+    }
+
     private Completable publish(String eventType, DebitCard debitCard) {
-<span class="fc" id="L63">        return Completable.defer(() -&gt; {</span>
-<span class="fc" id="L64">            Map&lt;String, Object&gt; event = new LinkedHashMap&lt;&gt;();</span>
-<span class="fc" id="L65">            event.put(&quot;eventType&quot;, eventType);</span>
-<span class="fc" id="L66">            event.put(&quot;eventId&quot;, UUID.randomUUID().toString());</span>
-<span class="fc" id="L67">            event.put(&quot;debitCardId&quot;, debitCard.getId());</span>
-<span class="fc" id="L68">            event.put(&quot;customerId&quot;, debitCard.getCustomerId());</span>
-<span class="fc" id="L69">            event.put(&quot;primaryAccountId&quot;, debitCard.getPrimaryAccountId());</span>
-<span class="fc" id="L70">            event.put(&quot;accountIds&quot;, debitCard.getAccountIds());</span>
-<span class="fc" id="L71">            event.put(&quot;occurredAt&quot;, Instant.now(clock).toString());</span>
-<span class="fc" id="L72">            return Completable.fromCompletionStage(kafkaTemplate.send(</span>
+<span class="fc" id="L68">        return Completable.defer(() -&gt; {</span>
+<span class="fc" id="L69">            Map&lt;String, Object&gt; event = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L70">            event.put(&quot;eventType&quot;, eventType);</span>
+<span class="fc" id="L71">            event.put(&quot;eventId&quot;, UUID.randomUUID().toString());</span>
+<span class="fc" id="L72">            event.put(&quot;debitCardId&quot;, debitCard.getId());</span>
+<span class="fc" id="L73">            event.put(&quot;customerId&quot;, debitCard.getCustomerId());</span>
+<span class="fc" id="L74">            event.put(&quot;primaryAccountId&quot;, debitCard.getPrimaryAccountId());</span>
+<span class="fc" id="L75">            event.put(&quot;accountIds&quot;, debitCard.getAccountIds());</span>
+<span class="fc" id="L76">            event.put(&quot;occurredAt&quot;, Instant.now(clock).toString());</span>
+<span class="fc" id="L77">            return Completable.fromCompletionStage(kafkaTemplate.send(</span>
                     topic,
-<span class="fc" id="L74">                    debitCard.getCustomerId(),</span>
-<span class="fc" id="L75">                    jsonMapper.writeValueAsString(event)));</span>
+<span class="fc" id="L79">                    debitCard.getCustomerId(),</span>
+<span class="fc" id="L80">                    jsonMapper.writeValueAsString(event)));</span>
         })
                 // send() puede bloquear mientras busca al broker: fuera del hilo de eventos.
-<span class="fc" id="L78">                .subscribeOn(Schedulers.io())</span>
-<span class="fc" id="L79">                .doOnComplete(() -&gt; log.info(</span>
+<span class="fc" id="L83">                .subscribeOn(Schedulers.io())</span>
+<span class="fc" id="L84">                .doOnComplete(() -&gt; log.info(</span>
                         &quot;{} published debitCardId={}&quot;,
                         eventType,
-<span class="fc" id="L82">                        debitCard.getId()))</span>
-<span class="fc" id="L83">                .onErrorComplete(error -&gt; {</span>
-<span class="fc" id="L84">                    log.error(</span>
+<span class="fc" id="L87">                        debitCard.getId()))</span>
+<span class="fc" id="L88">                .onErrorComplete(error -&gt; {</span>
+<span class="fc" id="L89">                    log.error(</span>
                             &quot;{} could not be published debitCardId={}&quot;,
                             eventType,
-<span class="fc" id="L87">                            debitCard.getId(),</span>
+<span class="fc" id="L92">                            debitCard.getId(),</span>
                             error);
-<span class="fc" id="L89">                    return true;</span>
+<span class="fc" id="L94">                    return true;</span>
                 });
     }
 }

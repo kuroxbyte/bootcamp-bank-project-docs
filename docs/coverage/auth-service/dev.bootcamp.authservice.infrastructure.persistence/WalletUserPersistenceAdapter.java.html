@@ -2,6 +2,7 @@
 
 import dev.bootcamp.authservice.application.port.WalletUserRepository;
 import dev.bootcamp.authservice.domain.model.user.WalletUser;
+import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Single;
 import lombok.RequiredArgsConstructor;
@@ -18,31 +19,36 @@ public class WalletUserPersistenceAdapter implements WalletUserRepository {
 
     @Override
     public Maybe&lt;WalletUser&gt; findByPhone(String phone) {
-<span class="fc" id="L21">        return Maybe.fromPublisher(mongoRepository.findByPhone(phone))</span>
-<span class="fc" id="L22">                .map(WalletUserPersistenceAdapter::toDomain);</span>
+<span class="fc" id="L22">        return Maybe.fromPublisher(mongoRepository.findByPhone(phone))</span>
+<span class="fc" id="L23">                .map(WalletUserPersistenceAdapter::toDomain);</span>
     }
 
     @Override
     public Single&lt;Boolean&gt; existsByPhone(String phone) {
-<span class="fc" id="L27">        return Single.fromPublisher(mongoRepository.existsByPhone(phone));</span>
+<span class="fc" id="L28">        return Single.fromPublisher(mongoRepository.existsByPhone(phone));</span>
     }
 
     @Override
     public Single&lt;WalletUser&gt; save(WalletUser walletUser) {
-<span class="fc" id="L32">        return Single.fromPublisher(mongoRepository.save(new WalletUserDocument(</span>
-<span class="fc" id="L33">                        walletUser.id(),</span>
-<span class="fc" id="L34">                        walletUser.walletId(),</span>
-<span class="fc" id="L35">                        walletUser.phone(),</span>
-<span class="fc" id="L36">                        walletUser.passwordHash())))</span>
-<span class="fc" id="L37">                .map(WalletUserPersistenceAdapter::toDomain);</span>
+<span class="fc" id="L33">        return Single.fromPublisher(mongoRepository.save(new WalletUserDocument(</span>
+<span class="fc" id="L34">                        walletUser.id(),</span>
+<span class="fc" id="L35">                        walletUser.walletId(),</span>
+<span class="fc" id="L36">                        walletUser.phone(),</span>
+<span class="fc" id="L37">                        walletUser.passwordHash())))</span>
+<span class="fc" id="L38">                .map(WalletUserPersistenceAdapter::toDomain);</span>
+    }
+
+    @Override
+    public Completable deleteByWalletId(String walletId) {
+<span class="fc" id="L43">        return Completable.fromPublisher(mongoRepository.deleteByWalletId(walletId));</span>
     }
 
     private static WalletUser toDomain(WalletUserDocument document) {
-<span class="fc" id="L41">        return new WalletUser(</span>
-<span class="fc" id="L42">                document.getId(),</span>
-<span class="fc" id="L43">                document.getWalletId(),</span>
-<span class="fc" id="L44">                document.getPhone(),</span>
-<span class="fc" id="L45">                document.getPasswordHash());</span>
+<span class="fc" id="L47">        return new WalletUser(</span>
+<span class="fc" id="L48">                document.getId(),</span>
+<span class="fc" id="L49">                document.getWalletId(),</span>
+<span class="fc" id="L50">                document.getPhone(),</span>
+<span class="fc" id="L51">                document.getPasswordHash());</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

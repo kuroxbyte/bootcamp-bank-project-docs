@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CreditDebtWebClientAdapter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">credit-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.creditservice.infrastructure.client.transaction</a> &gt; <span class="el_source">CreditDebtWebClientAdapter.java</span></div><h1>CreditDebtWebClientAdapter.java</h1><pre class="source lang-java linenums">package dev.bootcamp.creditservice.infrastructure.client.transaction;
+
+import dev.bootcamp.creditservice.application.port.CreditDebtClient;
+import dev.bootcamp.creditservice.infrastructure.client.RemoteLookup;
+import dev.bootcamp.creditservice.infrastructure.client.ServiceUnavailableException;
+import io.reactivex.rxjava3.core.Maybe;
+import io.reactivex.rxjava3.core.Single;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
+
+import java.math.BigDecimal;
+
+/**
+ * Implementa el puerto {@link CreditDebtClient} con transaction-service, protegido con un circuit
+ * breaker.
+ *
+ * &lt;ul&gt;
+ *   &lt;li&gt;Pagado de un crédito: suma de los movimientos {@code PAYMENT} de
+ *       {@code GET /api/v1/credits/{creditId}/movements}.
+ *   &lt;li&gt;Disponible de una tarjeta:
+ *       {@code GET /api/v1/credit-cards/{creditCardId}/available-credit}.
+ * &lt;/ul&gt;
+ */
+@Component
+public class CreditDebtWebClientAdapter implements CreditDebtClient {
+
+    private static final String SERVICE_NAME = &quot;transaction-service&quot;;
+    private static final String CUSTOMER_ID_HEADER = &quot;X-Customer-Id&quot;;
+    private static final String PAYMENT = &quot;PAYMENT&quot;;
+
+    private final WebClient webClient;
+    private final RemoteLookup remoteLookup;
+
+    /**
+     * Crea el cliente con la URL base configurada.
+     */
+    public CreditDebtWebClientAdapter(
+            WebClient.Builder webClientBuilder,
+            @Value(&quot;${clients.transaction-service.base-url}&quot;) String baseUrl,
+<span class="fc" id="L41">            RemoteLookup remoteLookup) {</span>
+<span class="fc" id="L42">        this.webClient = webClientBuilder.clone().baseUrl(baseUrl).build();</span>
+<span class="fc" id="L43">        this.remoteLookup = remoteLookup;</span>
+<span class="fc" id="L44">    }</span>
+
+    @Override
+    public Single&lt;BigDecimal&gt; paidAmount(String creditId, String customerId) {
+<span class="fc" id="L48">        return orUnavailable(remoteLookup.findById(</span>
+<span class="fc" id="L49">                webClient.get()</span>
+<span class="fc" id="L50">                        .uri(&quot;/api/v1/credits/{creditId}/movements&quot;, creditId)</span>
+<span class="fc" id="L51">                        .header(CUSTOMER_ID_HEADER, customerId)</span>
+<span class="fc" id="L52">                        .retrieve()</span>
+<span class="fc" id="L53">                        .bodyToFlux(ProductMovement.class)</span>
+<span class="fc" id="L54">                        .filter(movement -&gt; PAYMENT.equals(movement.type()))</span>
+<span class="fc" id="L55">                        .map(ProductMovement::amount)</span>
+<span class="fc" id="L56">                        .reduce(BigDecimal.ZERO, BigDecimal::add),</span>
+                SERVICE_NAME,
+                creditId), creditId);
+    }
+
+    @Override
+    public Single&lt;BigDecimal&gt; availableCredit(String creditCardId, String customerId) {
+<span class="fc" id="L63">        return orUnavailable(remoteLookup.findById(</span>
+<span class="fc" id="L64">                webClient.get()</span>
+<span class="fc" id="L65">                        .uri(&quot;/api/v1/credit-cards/{creditCardId}/available-credit&quot;, creditCardId)</span>
+<span class="fc" id="L66">                        .header(CUSTOMER_ID_HEADER, customerId)</span>
+<span class="fc" id="L67">                        .retrieve()</span>
+<span class="fc" id="L68">                        .bodyToMono(AvailableCredit.class)</span>
+<span class="fc" id="L69">                        .map(AvailableCredit::availableCredit),</span>
+                SERVICE_NAME,
+                creditCardId), creditCardId);
+    }
+
+    private static Single&lt;BigDecimal&gt; orUnavailable(
+            Maybe&lt;BigDecimal&gt; value,
+            String productId) {
+<span class="fc" id="L77">        return value.switchIfEmpty(Single.error(() -&gt; new ServiceUnavailableException(</span>
+                SERVICE_NAME + &quot; no conoce el producto &quot; + productId, null)));
+    }
+
+    /**
+     * Movimiento de un producto ({@code ProductMovementResponse} del contrato de
+     * transaction-service).
+     *
+     * @param type   PAYMENT para los pagos
+     * @param amount monto del movimiento
+     */
+<span class="fc" id="L88">    record ProductMovement(String type, BigDecimal amount) {}</span>
+
+    /**
+     * Crédito disponible ({@code AvailableCreditResponse} del contrato de transaction-service).
+     *
+     * @param creditCardId   tarjeta consultada
+     * @param availableCredit crédito disponible
+     */
+<span class="fc" id="L96">    record AvailableCredit(String creditCardId, BigDecimal availableCredit) {}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

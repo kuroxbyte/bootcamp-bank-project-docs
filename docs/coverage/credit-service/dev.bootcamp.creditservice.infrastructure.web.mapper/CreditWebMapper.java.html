@@ -31,19 +31,21 @@ public final class CreditWebMapper {
 <span class="fc" id="L31">                CreditTypeDto.valueOf(credit.getType().name()),</span>
 <span class="fc" id="L32">                credit.getAmount(),</span>
 <span class="fc" id="L33">                credit.getDueDate(),</span>
-<span class="fc" id="L34">                credit.getGrantedAt());</span>
+<span class="fc" id="L34">                credit.getGrantedAt())</span>
+<span class="fc" id="L35">                .closedAt(credit.getClosedAt());</span>
     }
 
     /**
      * Convierte {@link CreditCard} en su DTO de respuesta.
      */
     public static CreditCardResponseDto toResponse(CreditCard creditCard) {
-<span class="fc" id="L41">        return new CreditCardResponseDto(</span>
-<span class="fc" id="L42">                creditCard.getId(),</span>
-<span class="fc" id="L43">                creditCard.getCustomer().id(),</span>
-<span class="fc" id="L44">                creditCard.getCreditLimit(),</span>
-<span class="fc" id="L45">                creditCard.getPaymentDueDay(),</span>
-<span class="fc" id="L46">                creditCard.getGrantedAt());</span>
+<span class="fc" id="L42">        return new CreditCardResponseDto(</span>
+<span class="fc" id="L43">                creditCard.getId(),</span>
+<span class="fc" id="L44">                creditCard.getCustomer().id(),</span>
+<span class="fc" id="L45">                creditCard.getCreditLimit(),</span>
+<span class="fc" id="L46">                creditCard.getPaymentDueDay(),</span>
+<span class="fc" id="L47">                creditCard.getGrantedAt())</span>
+<span class="fc" id="L48">                .closedAt(creditCard.getClosedAt());</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

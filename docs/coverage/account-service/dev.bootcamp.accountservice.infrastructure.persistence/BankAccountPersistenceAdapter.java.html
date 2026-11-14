@@ -27,7 +27,7 @@ public class BankAccountPersistenceAdapter implements BankAccountRepository {
 
     @Override
     public Flowable&lt;BankAccount&gt; findByCustomerId(String customerId) {
-<span class="fc" id="L30">        return Flowable.fromPublisher(mongoRepository.findByCustomerId(customerId))</span>
+<span class="fc" id="L30">        return Flowable.fromPublisher(mongoRepository.findByCustomerIdAndClosedAtIsNull(customerId))</span>
 <span class="fc" id="L31">                .map(BankAccountPersistenceMapper::toDomain);</span>
     }
 

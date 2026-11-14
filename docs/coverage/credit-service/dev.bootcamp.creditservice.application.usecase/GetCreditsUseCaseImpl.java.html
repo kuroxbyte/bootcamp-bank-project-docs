@@ -21,14 +21,24 @@ public class GetCreditsUseCaseImpl implements GetCreditsUseCase {
 
     @Override
     public Single&lt;Credit&gt; findById(String id) {
-<span class="fc" id="L24">        return creditRepository</span>
-<span class="fc" id="L25">                .findById(id)</span>
-<span class="fc" id="L26">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(&quot;El crédito no existe&quot;)));</span>
+<span class="fc" id="L24">        return findActive(creditRepository, id);</span>
     }
 
     @Override
     public Flowable&lt;Credit&gt; findAll() {
-<span class="fc" id="L31">        return creditRepository.findAll();</span>
+<span class="fc" id="L29">        return creditRepository.findAll();</span>
+    }
+
+    /**
+     * Busca un crédito activo.
+     *
+     * @return el crédito; error {@link NotFoundException} si no existe o fue dado de baja
+     */
+    static Single&lt;Credit&gt; findActive(CreditRepository creditRepository, String creditId) {
+<span class="fc" id="L38">        return creditRepository</span>
+<span class="fc" id="L39">                .findById(creditId)</span>
+<span class="fc bfc" id="L40" title="All 2 branches covered.">                .filter(credit -&gt; !credit.isClosed())</span>
+<span class="fc" id="L41">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(&quot;El crédito no existe&quot;)));</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>
