@@ -252,6 +252,7 @@ cuenta, recibir un crédito o una tarjeta responde 422.
 
 ## Documentación
 
-- `docs/diagrams/`: diagramas UML en draw.io (diseño de la solución y diagramas de secuencia).
+- `docs/diagrams/`: diagramas UML (diseño de la solución, diagramas de secuencia y de clases), cada uno
+  con su fuente `.drawio` y sus imágenes SVG.
 - `docs/events/asyncapi.yaml`: contrato de los eventos de Kafka (AsyncAPI).
 - `postman/`: colección y entorno de Postman para verificar las funcionalidades.
