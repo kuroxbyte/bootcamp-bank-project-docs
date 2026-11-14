@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GlobalExceptionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.infrastructure.web</a> &gt; <span class="el_source">GlobalExceptionHandler.java</span></div><h1>GlobalExceptionHandler.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.infrastructure.web;
+
+import dev.bootcamp.transactionservice.domain.exception.BusinessRuleException;
+import dev.bootcamp.transactionservice.domain.exception.NotFoundException;
+import dev.bootcamp.transactionservice.infrastructure.client.ServiceUnavailableException;
+import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.reactive.result.method.annotation.ResponseEntityExceptionHandler;
+import reactor.core.publisher.Mono;
+
+/**
+ * Traduce las excepciones a respuestas Problem Details (RFC 7807).
+ *
+ * &lt;ul&gt;
+ *   &lt;li&gt;400: datos de entrada inválidos o falta un header; lo resuelve {@link
+ *       ResponseEntityExceptionHandler}. Un parámetro de consulta inválido llega como {@link
+ *       ConstraintViolationException}.
+ *   &lt;li&gt;404: {@link NotFoundException}.
+ *   &lt;li&gt;422: {@link BusinessRuleException}.
+ *   &lt;li&gt;503: {@link ServiceUnavailableException}; el detalle ya lo registra el cliente HTTP.
+ *   &lt;li&gt;500: cualquier otro error inesperado.
+ * &lt;/ul&gt;
+ */
+<span class="fc" id="L29">@Slf4j</span>
+@RestControllerAdvice
+<span class="fc" id="L31">public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {</span>
+
+    /**
+     * Responde 400 cuando un parámetro de consulta no cumple el contrato.
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public Mono&lt;ResponseEntity&lt;ProblemDetail&gt;&gt; handleConstraintViolation(
+            ConstraintViolationException ex) {
+<span class="fc" id="L39">        log.warn(&quot;Invalid request parameter: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L40">        return problem(HttpStatus.BAD_REQUEST, &quot;Solicitud inválida&quot;, ex.getMessage());</span>
+    }
+
+    /**
+     * Responde 404 cuando el recurso no existe o no pertenece al cliente.
+     */
+    @ExceptionHandler(NotFoundException.class)
+    public Mono&lt;ResponseEntity&lt;ProblemDetail&gt;&gt; handleNotFound(NotFoundException ex) {
+<span class="fc" id="L48">        log.warn(&quot;Resource not found: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L49">        return problem(HttpStatus.NOT_FOUND, &quot;Recurso no encontrado&quot;, ex.getMessage());</span>
+    }
+
+    /**
+     * Responde 422 cuando se incumple una regla de negocio.
+     */
+    @ExceptionHandler(BusinessRuleException.class)
+    public Mono&lt;ResponseEntity&lt;ProblemDetail&gt;&gt; handleBusinessRule(BusinessRuleException ex) {
+<span class="fc" id="L57">        log.warn(&quot;Business rule violated: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L58">        return problem(</span>
+<span class="fc" id="L59">                HttpStatus.UNPROCESSABLE_CONTENT, &quot;Regla de negocio incumplida&quot;, ex.getMessage());</span>
+    }
+
+    /**
+     * Responde 503 cuando otro microservicio no está disponible.
+     */
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public Mono&lt;ResponseEntity&lt;ProblemDetail&gt;&gt; handleServiceUnavailable(
+            ServiceUnavailableException ex) {
+<span class="fc" id="L68">        return problem(HttpStatus.SERVICE_UNAVAILABLE, &quot;Servicio no disponible&quot;, ex.getMessage());</span>
+    }
+
+    /**
+     * Responde 500 ante cualquier otro error, sin exponer el detalle interno.
+     */
+    @ExceptionHandler(Exception.class)
+    public Mono&lt;ResponseEntity&lt;ProblemDetail&gt;&gt; handleUnexpected(Exception ex) {
+<span class="fc" id="L76">        log.error(&quot;Unexpected error&quot;, ex);</span>
+<span class="fc" id="L77">        return problem(</span>
+                HttpStatus.INTERNAL_SERVER_ERROR, &quot;Error interno&quot;, &quot;Ocurrió un error inesperado&quot;);
+    }
+
+    private static Mono&lt;ResponseEntity&lt;ProblemDetail&gt;&gt; problem(
+            HttpStatus status,
+            String title,
+            String detail) {
+<span class="fc" id="L85">        ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);</span>
+<span class="fc" id="L86">        problem.setTitle(title);</span>
+<span class="fc" id="L87">        return Mono.just(ResponseEntity.status(status).body(problem));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

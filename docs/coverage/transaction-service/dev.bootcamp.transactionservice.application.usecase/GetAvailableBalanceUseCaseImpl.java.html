@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GetAvailableBalanceUseCaseImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.application.usecase</a> &gt; <span class="el_source">GetAvailableBalanceUseCaseImpl.java</span></div><h1>GetAvailableBalanceUseCaseImpl.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.application.usecase;
+
+import dev.bootcamp.transactionservice.application.port.AccountClient;
+import dev.bootcamp.transactionservice.application.port.ChargeRepository;
+import dev.bootcamp.transactionservice.application.port.CreditCardClient;
+import dev.bootcamp.transactionservice.application.port.MovementRepository;
+import dev.bootcamp.transactionservice.domain.exception.NotFoundException;
+import dev.bootcamp.transactionservice.domain.model.account.Account;
+import dev.bootcamp.transactionservice.domain.model.creditcard.CreditCard;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+
+import java.math.BigDecimal;
+
+/**
+ * Implementación de {@link GetAvailableBalanceUseCase}.
+ */
+@RequiredArgsConstructor
+public class GetAvailableBalanceUseCaseImpl implements GetAvailableBalanceUseCase {
+    private final AccountClient accountClient;
+    private final MovementRepository movementRepository;
+    private final CreditCardClient creditCardClient;
+    private final ChargeRepository chargeRepository;
+
+    @Override
+    public Single&lt;BigDecimal&gt; getAccountBalance(String customerId, String accountId) {
+<span class="fc" id="L27">        return accountClient</span>
+<span class="fc" id="L28">                .findById(accountId)</span>
+<span class="fc" id="L29">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(&quot;La cuenta no existe&quot;)))</span>
+<span class="fc" id="L30">                .map(account -&gt; ensureBelongsTo(account, customerId))</span>
+<span class="fc" id="L31">                .flatMap(account -&gt; movementRepository.getBalance(accountId).map(account::balance));</span>
+    }
+
+    @Override
+    public Single&lt;BigDecimal&gt; getCreditCardAvailableCredit(String customerId, String creditCardId) {
+<span class="fc" id="L36">        return creditCardClient</span>
+<span class="fc" id="L37">                .findById(creditCardId)</span>
+<span class="fc" id="L38">                .switchIfEmpty(</span>
+<span class="fc" id="L39">                        Single.error(</span>
+<span class="fc" id="L40">                                () -&gt; new NotFoundException(&quot;La tarjeta de crédito no existe&quot;)))</span>
+<span class="fc" id="L41">                .map(creditCard -&gt; ensureBelongsTo(creditCard, customerId))</span>
+<span class="fc" id="L42">                .flatMap(</span>
+                        creditCard -&gt;
+<span class="fc" id="L44">                                chargeRepository</span>
+<span class="fc" id="L45">                                        .getDebt(creditCardId)</span>
+<span class="fc" id="L46">                                        .map(creditCard::availableCredit));</span>
+    }
+
+    private static Account ensureBelongsTo(Account account, String customerId) {
+<span class="fc bfc" id="L50" title="All 2 branches covered.">        if (!account.belongsTo(customerId)) {</span>
+<span class="fc" id="L51">            throw new NotFoundException(&quot;La cuenta no pertenece al cliente&quot;);</span>
+        }
+<span class="fc" id="L53">        return account;</span>
+    }
+
+    private static CreditCard ensureBelongsTo(CreditCard creditCard, String customerId) {
+<span class="fc bfc" id="L57" title="All 2 branches covered.">        if (!creditCard.belongsTo(customerId)) {</span>
+<span class="fc" id="L58">            throw new NotFoundException(&quot;La tarjeta de crédito no pertenece al cliente&quot;);</span>
+        }
+<span class="fc" id="L60">        return creditCard;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OperationResultListener.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">yanki-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.yankiservice.infrastructure.messaging</a> &gt; <span class="el_source">OperationResultListener.java</span></div><h1>OperationResultListener.java</h1><pre class="source lang-java linenums">package dev.bootcamp.yankiservice.infrastructure.messaging;
+
+import dev.bootcamp.yankiservice.application.usecase.HandleOperationResultUseCase;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+
+/**
+ * Consume el tópico {@code yanki-operation-results} de transaction-service: la respuesta a cada
+ * cargo o abono pedido a una cuenta. El contrato está en {@code docs/events/asyncapi.yaml} del
+ * repositorio raíz.
+ *
+ * &lt;p&gt;Ignora los tipos de evento que no conoce. Si aplicar la respuesta falla, la excepción hace
+ * que Kafka vuelva a entregar el mensaje; una respuesta repetida se ignora.
+ */
+<span class="fc" id="L19">@Slf4j</span>
+@Component
+@RequiredArgsConstructor
+public class OperationResultListener {
+
+    static final String COMPLETED = &quot;YankiOperationCompleted&quot;;
+    static final String REJECTED = &quot;YankiOperationRejected&quot;;
+
+    private final HandleOperationResultUseCase handleOperationResultUseCase;
+    private final JsonMapper jsonMapper;
+
+    /**
+     * Procesa una respuesta de transaction-service.
+     *
+     * @param message evento en JSON
+     */
+    @KafkaListener(topics = &quot;${messaging.topics.yanki-operation-results}&quot;)
+    public void onOperationResult(String message) {
+<span class="fc" id="L37">        JsonNode event = jsonMapper.readTree(message);</span>
+<span class="fc" id="L38">        String eventType = event.path(&quot;eventType&quot;).asString();</span>
+<span class="fc bfc" id="L39" title="All 4 branches covered.">        if (!COMPLETED.equals(eventType) &amp;&amp; !REJECTED.equals(eventType)) {</span>
+<span class="fc" id="L40">            log.debug(&quot;Ignoring operation result type={}&quot;, eventType);</span>
+<span class="fc" id="L41">            return;</span>
+        }
+<span class="fc" id="L43">        String operationId = event.get(&quot;operationId&quot;).asString();</span>
+<span class="fc bfc" id="L44" title="All 4 branches covered.">        String reason = event.path(&quot;reason&quot;).isMissingNode() || event.path(&quot;reason&quot;).isNull()</span>
+<span class="fc" id="L45">                ? null</span>
+<span class="fc" id="L46">                : event.path(&quot;reason&quot;).asString();</span>
+<span class="fc" id="L47">        handleOperationResultUseCase</span>
+<span class="fc" id="L48">                .execute(operationId, COMPLETED.equals(eventType), reason)</span>
+<span class="fc" id="L49">                .blockingAwait();</span>
+<span class="fc" id="L50">        log.info(&quot;{} applied operationId={}&quot;, eventType, operationId);</span>
+<span class="fc" id="L51">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserAccountPersistenceAdapter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">auth-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.authservice.infrastructure.persistence</a> &gt; <span class="el_source">UserAccountPersistenceAdapter.java</span></div><h1>UserAccountPersistenceAdapter.java</h1><pre class="source lang-java linenums">package dev.bootcamp.authservice.infrastructure.persistence;
+
+import dev.bootcamp.authservice.application.port.UserAccountRepository;
+import dev.bootcamp.authservice.domain.model.user.UserAccount;
+import io.reactivex.rxjava3.core.Maybe;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+/**
+ * Implementa el puerto {@link UserAccountRepository} con MongoDB reactivo.
+ */
+@Component
+@RequiredArgsConstructor
+public class UserAccountPersistenceAdapter implements UserAccountRepository {
+
+    private final UserAccountMongoRepository mongoRepository;
+
+    @Override
+    public Maybe&lt;UserAccount&gt; findByUsername(String username) {
+<span class="fc" id="L21">        return Maybe.fromPublisher(mongoRepository.findByUsername(username))</span>
+<span class="fc" id="L22">                .map(UserAccountPersistenceAdapter::toDomain);</span>
+    }
+
+    @Override
+    public Single&lt;Boolean&gt; existsByUsername(String username) {
+<span class="fc" id="L27">        return Single.fromPublisher(mongoRepository.existsByUsername(username));</span>
+    }
+
+    @Override
+    public Single&lt;Boolean&gt; existsByCustomerId(String customerId) {
+<span class="fc" id="L32">        return Single.fromPublisher(mongoRepository.existsByCustomerId(customerId));</span>
+    }
+
+    @Override
+    public Single&lt;UserAccount&gt; save(UserAccount userAccount) {
+<span class="fc" id="L37">        return Single.fromPublisher(mongoRepository.save(new UserAccountDocument(</span>
+<span class="fc" id="L38">                        userAccount.id(),</span>
+<span class="fc" id="L39">                        userAccount.customerId(),</span>
+<span class="fc" id="L40">                        userAccount.username(),</span>
+<span class="fc" id="L41">                        userAccount.passwordHash())))</span>
+<span class="fc" id="L42">                .map(UserAccountPersistenceAdapter::toDomain);</span>
+    }
+
+    private static UserAccount toDomain(UserAccountDocument document) {
+<span class="fc" id="L46">        return new UserAccount(</span>
+<span class="fc" id="L47">                document.getId(),</span>
+<span class="fc" id="L48">                document.getCustomerId(),</span>
+<span class="fc" id="L49">                document.getUsername(),</span>
+<span class="fc" id="L50">                document.getPasswordHash());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

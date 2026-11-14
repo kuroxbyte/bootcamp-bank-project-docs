@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RegisterWalletUserUseCaseImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">auth-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.authservice.application.usecase</a> &gt; <span class="el_source">RegisterWalletUserUseCaseImpl.java</span></div><h1>RegisterWalletUserUseCaseImpl.java</h1><pre class="source lang-java linenums">package dev.bootcamp.authservice.application.usecase;
+
+import dev.bootcamp.authservice.application.port.PasswordHasher;
+import dev.bootcamp.authservice.application.port.WalletRepository;
+import dev.bootcamp.authservice.application.port.WalletUserRepository;
+import dev.bootcamp.authservice.domain.exception.BusinessRuleException;
+import dev.bootcamp.authservice.domain.model.user.UserAccount;
+import dev.bootcamp.authservice.domain.model.user.WalletUser;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Maybe;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+
+/**
+ * Implementación de {@link RegisterWalletUserUseCase}.
+ */
+@RequiredArgsConstructor
+public class RegisterWalletUserUseCaseImpl implements RegisterWalletUserUseCase {
+    private final WalletRepository walletRepository;
+    private final WalletUserRepository walletUserRepository;
+    private final PasswordHasher passwordHasher;
+
+    @Override
+    public Single&lt;WalletUser&gt; execute(String phone, String password) {
+<span class="fc" id="L25">        return Completable.fromAction(() -&gt; UserAccount.validatePassword(password))</span>
+<span class="fc" id="L26">                .andThen(Maybe.defer(() -&gt; walletRepository.findByPhone(phone)))</span>
+<span class="fc" id="L27">                .switchIfEmpty(Single.error(() -&gt; new BusinessRuleException(</span>
+                        &quot;El celular no tiene monedero Yanki o todavía no está disponible&quot;)))
+<span class="fc" id="L29">                .flatMap(wallet -&gt; walletUserRepository.existsByPhone(phone)</span>
+<span class="fc bfc" id="L30" title="All 2 branches covered.">                        .flatMap(exists -&gt; exists</span>
+<span class="fc" id="L31">                                ? Single.error(new BusinessRuleException(</span>
+                                        &quot;El monedero ya tiene un acceso registrado&quot;))
+<span class="fc" id="L33">                                : walletUserRepository.save(new WalletUser(</span>
+                                        null,
+<span class="fc" id="L35">                                        wallet.id(),</span>
+                                        phone,
+<span class="fc" id="L37">                                        passwordHasher.hash(password)))));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CustomerCreatedEvent.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">customer-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.customerservice.infrastructure.messaging</a> &gt; <span class="el_source">CustomerCreatedEvent.java</span></div><h1>CustomerCreatedEvent.java</h1><pre class="source lang-java linenums">package dev.bootcamp.customerservice.infrastructure.messaging;
+
+import java.time.Instant;
+
+/**
+ * Evento {@code CustomerCreated} del tópico {@code customer-events}, tal como se publica en JSON.
+ * Su contrato está en {@code docs/events/asyncapi.yaml} del repositorio raíz.
+ *
+ * @param eventType  siempre {@code CustomerCreated}
+ * @param customerId id del cliente creado; también es la clave del mensaje
+ * @param type       PERSONAL o BUSINESS
+ * @param profile    STANDARD, VIP o PYME
+ * @param occurredAt momento de la creación
+ */
+<span class="fc" id="L15">public record CustomerCreatedEvent(</span>
+        String eventType,
+        String customerId,
+        String type,
+        String profile,
+        Instant occurredAt) {
+
+    /**
+     * Nombre del tipo de evento.
+     */
+    public static final String EVENT_TYPE = &quot;CustomerCreated&quot;;
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

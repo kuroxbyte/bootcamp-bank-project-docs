@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CreditKafkaEventPublisher.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">credit-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.creditservice.infrastructure.messaging</a> &gt; <span class="el_source">CreditKafkaEventPublisher.java</span></div><h1>CreditKafkaEventPublisher.java</h1><pre class="source lang-java linenums">package dev.bootcamp.creditservice.infrastructure.messaging;
+
+import dev.bootcamp.creditservice.application.port.CreditEventPublisher;
+import dev.bootcamp.creditservice.domain.model.credit.Credit;
+import dev.bootcamp.creditservice.domain.model.creditcard.CreditCard;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.stereotype.Component;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * Implementa el puerto {@link CreditEventPublisher} publicando en el tópico {@code credit-events}.
+ * La clave de cada mensaje es el id del cliente, para que sus eventos lleguen en orden. El
+ * contrato está en {@code docs/events/asyncapi.yaml} del repositorio raíz.
+ *
+ * &lt;p&gt;Si Kafka no responde ({@code max.block.ms}, 1 s en config-repo), el error se registra y el
+ * otorgamiento no falla: el evento se pierde (limitación conocida; evitarla requiere el patrón
+ * outbox).
+ */
+<span class="fc" id="L29">@Slf4j</span>
+@Component
+public class CreditKafkaEventPublisher implements CreditEventPublisher {
+
+    private final KafkaTemplate&lt;String, String&gt; kafkaTemplate;
+    private final JsonMapper jsonMapper;
+    private final Clock clock;
+    private final String topic;
+
+    /**
+     * Crea el publicador con el tópico configurado.
+     */
+    public CreditKafkaEventPublisher(
+            KafkaTemplate&lt;String, String&gt; kafkaTemplate,
+            JsonMapper jsonMapper,
+            Clock clock,
+<span class="fc" id="L45">            @Value(&quot;${messaging.topics.credit-events}&quot;) String topic) {</span>
+<span class="fc" id="L46">        this.kafkaTemplate = kafkaTemplate;</span>
+<span class="fc" id="L47">        this.jsonMapper = jsonMapper;</span>
+<span class="fc" id="L48">        this.clock = clock;</span>
+<span class="fc" id="L49">        this.topic = topic;</span>
+<span class="fc" id="L50">    }</span>
+
+    @Override
+    public Completable publishCreditGranted(Credit credit) {
+<span class="fc" id="L54">        Map&lt;String, Object&gt; event = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L55">        event.put(&quot;eventType&quot;, &quot;CreditGranted&quot;);</span>
+<span class="fc" id="L56">        event.put(&quot;creditId&quot;, credit.getId());</span>
+<span class="fc" id="L57">        event.put(&quot;customerId&quot;, credit.getCustomer().id());</span>
+<span class="fc" id="L58">        event.put(&quot;creditType&quot;, credit.getType().name());</span>
+<span class="fc" id="L59">        event.put(&quot;amount&quot;, credit.getAmount());</span>
+<span class="fc" id="L60">        event.put(&quot;dueDate&quot;, credit.getDueDate().toString());</span>
+<span class="fc" id="L61">        event.put(&quot;grantedAt&quot;, credit.getGrantedAt().toString());</span>
+<span class="fc" id="L62">        return publish(credit.getCustomer().id(), event);</span>
+    }
+
+    @Override
+    public Completable publishCreditCardGranted(CreditCard creditCard) {
+<span class="fc" id="L67">        Map&lt;String, Object&gt; event = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L68">        event.put(&quot;eventType&quot;, &quot;CreditCardGranted&quot;);</span>
+<span class="fc" id="L69">        event.put(&quot;creditCardId&quot;, creditCard.getId());</span>
+<span class="fc" id="L70">        event.put(&quot;customerId&quot;, creditCard.getCustomer().id());</span>
+<span class="fc" id="L71">        event.put(&quot;creditLimit&quot;, creditCard.getCreditLimit());</span>
+<span class="fc" id="L72">        event.put(&quot;paymentDueDay&quot;, creditCard.getPaymentDueDay());</span>
+<span class="fc" id="L73">        event.put(&quot;grantedAt&quot;, creditCard.getGrantedAt().toString());</span>
+<span class="fc" id="L74">        return publish(creditCard.getCustomer().id(), event);</span>
+    }
+
+    private Completable publish(String customerId, Map&lt;String, Object&gt; event) {
+<span class="fc" id="L78">        return Completable.defer(() -&gt; {</span>
+            // Id único: debt-service lo usa para no procesar dos veces el mismo evento.
+<span class="fc" id="L80">            event.put(&quot;eventId&quot;, UUID.randomUUID().toString());</span>
+<span class="fc" id="L81">            event.put(&quot;occurredAt&quot;, Instant.now(clock).toString());</span>
+<span class="fc" id="L82">            return Completable.fromCompletionStage(kafkaTemplate.send(</span>
+                    topic,
+                    customerId,
+<span class="fc" id="L85">                    jsonMapper.writeValueAsString(event)));</span>
+        })
+                // send() puede bloquear mientras busca al broker: fuera del hilo de eventos.
+<span class="fc" id="L88">                .subscribeOn(Schedulers.io())</span>
+<span class="fc" id="L89">                .doOnComplete(() -&gt; log.info(</span>
+                        &quot;{} published customerId={}&quot;,
+<span class="fc" id="L91">                        event.get(&quot;eventType&quot;),</span>
+                        customerId))
+<span class="fc" id="L93">                .onErrorComplete(error -&gt; {</span>
+<span class="fc" id="L94">                    log.error(</span>
+                            &quot;{} could not be published customerId={}&quot;,
+<span class="fc" id="L96">                            event.get(&quot;eventType&quot;),</span>
+                            customerId,
+                            error);
+<span class="fc" id="L99">                    return true;</span>
+                });
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

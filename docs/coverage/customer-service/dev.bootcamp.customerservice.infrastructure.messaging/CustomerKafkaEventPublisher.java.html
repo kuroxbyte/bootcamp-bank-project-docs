@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CustomerKafkaEventPublisher.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">customer-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.customerservice.infrastructure.messaging</a> &gt; <span class="el_source">CustomerKafkaEventPublisher.java</span></div><h1>CustomerKafkaEventPublisher.java</h1><pre class="source lang-java linenums">package dev.bootcamp.customerservice.infrastructure.messaging;
+
+import dev.bootcamp.customerservice.application.port.CustomerEventPublisher;
+import dev.bootcamp.customerservice.domain.model.customer.Customer;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.stereotype.Component;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.time.Clock;
+import java.time.Instant;
+
+/**
+ * Implementa el puerto {@link CustomerEventPublisher} publicando en Kafka.
+ *
+ * &lt;p&gt;El evento se publica después de guardar el cliente. Si Kafka no está disponible (se espera
+ * como máximo {@code max.block.ms}, 1 s en config-repo), el error se registra y la creación del
+ * cliente no falla: el evento se pierde (limitación conocida; evitarla requiere el patrón outbox).
+ */
+<span class="fc" id="L23">@Slf4j</span>
+@Component
+public class CustomerKafkaEventPublisher implements CustomerEventPublisher {
+
+    private final KafkaTemplate&lt;String, String&gt; kafkaTemplate;
+    private final JsonMapper jsonMapper;
+    private final Clock clock;
+    private final String topic;
+
+    /**
+     * Crea el publicador con el tópico configurado.
+     */
+    public CustomerKafkaEventPublisher(
+            KafkaTemplate&lt;String, String&gt; kafkaTemplate,
+            JsonMapper jsonMapper,
+            Clock clock,
+<span class="fc" id="L39">            @Value(&quot;${messaging.topics.customer-events}&quot;) String topic) {</span>
+<span class="fc" id="L40">        this.kafkaTemplate = kafkaTemplate;</span>
+<span class="fc" id="L41">        this.jsonMapper = jsonMapper;</span>
+<span class="fc" id="L42">        this.clock = clock;</span>
+<span class="fc" id="L43">        this.topic = topic;</span>
+<span class="fc" id="L44">    }</span>
+
+    @Override
+    public Completable publishCustomerCreated(Customer customer) {
+<span class="fc" id="L48">        return Completable.defer(() -&gt; {</span>
+<span class="fc" id="L49">            CustomerCreatedEvent event = new CustomerCreatedEvent(</span>
+                    CustomerCreatedEvent.EVENT_TYPE,
+<span class="fc" id="L51">                    customer.getId(),</span>
+<span class="fc" id="L52">                    customer.getType().name(),</span>
+<span class="fc" id="L53">                    customer.getProfile().name(),</span>
+<span class="fc" id="L54">                    Instant.now(clock));</span>
+<span class="fc" id="L55">            return Completable.fromCompletionStage(kafkaTemplate.send(</span>
+                    topic,
+<span class="fc" id="L57">                    customer.getId(),</span>
+<span class="fc" id="L58">                    jsonMapper.writeValueAsString(event)));</span>
+        })
+                // send() puede bloquear mientras busca al broker (hasta max.block.ms): fuera del
+                // hilo de eventos de WebFlux.
+<span class="fc" id="L62">                .subscribeOn(Schedulers.io())</span>
+<span class="fc" id="L63">                .doOnComplete(() -&gt; log.info(</span>
+                        &quot;CustomerCreated published customerId={}&quot;,
+<span class="fc" id="L65">                        customer.getId()))</span>
+<span class="fc" id="L66">                .onErrorComplete(error -&gt; {</span>
+<span class="fc" id="L67">                    log.error(</span>
+                            &quot;CustomerCreated could not be published customerId={}&quot;,
+<span class="fc" id="L69">                            customer.getId(),</span>
+                            error);
+<span class="fc" id="L71">                    return true;</span>
+                });
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

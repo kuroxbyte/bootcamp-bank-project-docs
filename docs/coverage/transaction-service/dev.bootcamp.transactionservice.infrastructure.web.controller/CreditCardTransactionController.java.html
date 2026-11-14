@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CreditCardTransactionController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.infrastructure.web.controller</a> &gt; <span class="el_source">CreditCardTransactionController.java</span></div><h1>CreditCardTransactionController.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.infrastructure.web.controller;
+
+import dev.bootcamp.transactionservice.application.usecase.ChargeCreditCardUseCase;
+import dev.bootcamp.transactionservice.application.usecase.GetAvailableBalanceUseCase;
+import dev.bootcamp.transactionservice.application.usecase.GetProductMovementsUseCase;
+import dev.bootcamp.transactionservice.application.usecase.PayCreditCardUseCase;
+import dev.bootcamp.transactionservice.infrastructure.web.api.CreditCardTransactionsApi;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.AmountRequestDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.AvailableCreditResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.ChargeResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.PaymentResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.ProductMovementResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.mapper.TransactionWebMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.time.Clock;
+import java.time.LocalDate;
+
+/**
+ * Endpoints de consumos, pagos, crédito disponible y movimientos de tarjetas.
+ */
+<span class="fc" id="L29">@Slf4j</span>
+@RestController
+@RequiredArgsConstructor
+public class CreditCardTransactionController implements CreditCardTransactionsApi {
+
+    private final ChargeCreditCardUseCase chargeCreditCardUseCase;
+    private final PayCreditCardUseCase payCreditCardUseCase;
+    private final GetAvailableBalanceUseCase getAvailableBalanceUseCase;
+    private final GetProductMovementsUseCase getProductMovementsUseCase;
+    private final Clock clock;
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;ChargeResponseDto&gt;&gt; chargeCreditCard(
+            String customerId,
+            String creditCardId,
+            Mono&lt;AmountRequestDto&gt; amountRequestDto,
+            ServerWebExchange exchange) {
+<span class="fc" id="L46">        return amountRequestDto</span>
+<span class="fc" id="L47">                .flatMap(</span>
+                        request -&gt;
+<span class="fc" id="L49">                                Mono.from(</span>
+                                        chargeCreditCardUseCase
+<span class="fc" id="L51">                                                .charge(</span>
+                                                        customerId,
+                                                        creditCardId,
+<span class="fc" id="L54">                                                        request.getAmount(),</span>
+<span class="fc" id="L55">                                                        LocalDate.now(clock))</span>
+<span class="fc" id="L56">                                                .toFlowable()))</span>
+<span class="fc" id="L57">                .doOnNext(</span>
+                        charge -&gt;
+<span class="fc" id="L59">                                log.info(</span>
+                                        &quot;Charge registered creditCardId={} customerId={} amount={}&quot;,
+                                        creditCardId,
+                                        customerId,
+<span class="fc" id="L63">                                        charge.amount()))</span>
+<span class="fc" id="L64">                .map(</span>
+                        charge -&gt;
+<span class="fc" id="L66">                                ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="fc" id="L67">                                        .body(TransactionWebMapper.toResponse(charge)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;PaymentResponseDto&gt;&gt; payThirdPartyCreditCard(
+            String customerId,
+            String creditCardId,
+            Mono&lt;AmountRequestDto&gt; amountRequestDto,
+            ServerWebExchange exchange) {
+<span class="fc" id="L76">        return amountRequestDto</span>
+<span class="fc" id="L77">                .flatMap(request -&gt; Mono.from(payCreditCardUseCase</span>
+<span class="fc" id="L78">                        .payThirdParty(</span>
+                                customerId,
+                                creditCardId,
+<span class="fc" id="L81">                                request.getAmount(),</span>
+<span class="fc" id="L82">                                LocalDate.now(clock))</span>
+<span class="fc" id="L83">                        .toFlowable()))</span>
+<span class="fc" id="L84">                .doOnNext(payment -&gt; log.info(</span>
+                        &quot;Third-party card payment registered creditCardId={} payerCustomerId={}&quot;
+                                + &quot; amount={}&quot;,
+                        creditCardId,
+                        customerId,
+<span class="fc" id="L89">                        payment.amount()))</span>
+<span class="fc" id="L90">                .map(payment -&gt; ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="fc" id="L91">                        .body(TransactionWebMapper.toResponse(payment)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;PaymentResponseDto&gt;&gt; payCreditCard(
+            String customerId,
+            String creditCardId,
+            Mono&lt;AmountRequestDto&gt; amountRequestDto,
+            ServerWebExchange exchange) {
+<span class="fc" id="L100">        return amountRequestDto</span>
+<span class="fc" id="L101">                .flatMap(</span>
+                        request -&gt;
+<span class="fc" id="L103">                                Mono.from(</span>
+                                        payCreditCardUseCase
+<span class="fc" id="L105">                                                .pay(</span>
+                                                        customerId,
+                                                        creditCardId,
+<span class="fc" id="L108">                                                        request.getAmount(),</span>
+<span class="fc" id="L109">                                                        LocalDate.now(clock))</span>
+<span class="fc" id="L110">                                                .toFlowable()))</span>
+<span class="fc" id="L111">                .doOnNext(</span>
+                        payment -&gt;
+<span class="fc" id="L113">                                log.info(</span>
+                                        &quot;Credit card payment registered creditCardId={}&quot;
+                                                + &quot; customerId={} amount={}&quot;,
+                                        creditCardId,
+                                        customerId,
+<span class="fc" id="L118">                                        payment.amount()))</span>
+<span class="fc" id="L119">                .map(</span>
+                        payment -&gt;
+<span class="fc" id="L121">                                ResponseEntity.status(HttpStatus.CREATED)</span>
+<span class="fc" id="L122">                                        .body(TransactionWebMapper.toResponse(payment)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;AvailableCreditResponseDto&gt;&gt; getCreditCardAvailableCredit(
+            String customerId,
+            String creditCardId,
+            ServerWebExchange exchange) {
+<span class="fc" id="L130">        log.debug(</span>
+                &quot;Fetching available credit creditCardId={} customerId={}&quot;,
+                creditCardId,
+                customerId);
+<span class="fc" id="L134">        return Mono.from(</span>
+                        getAvailableBalanceUseCase
+<span class="fc" id="L136">                                .getCreditCardAvailableCredit(customerId, creditCardId)</span>
+<span class="fc" id="L137">                                .toFlowable())</span>
+<span class="fc" id="L138">                .map(</span>
+                        available -&gt;
+<span class="fc" id="L140">                                ResponseEntity.ok(</span>
+                                        new AvailableCreditResponseDto(creditCardId, available)));
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;Flux&lt;ProductMovementResponseDto&gt;&gt;&gt; getCreditCardMovements(
+            String customerId,
+            String creditCardId,
+            ServerWebExchange exchange) {
+<span class="fc" id="L149">        log.debug(&quot;Fetching movements creditCardId={} customerId={}&quot;, creditCardId, customerId);</span>
+<span class="fc" id="L150">        return MovementResponses.of(</span>
+<span class="fc" id="L151">                getProductMovementsUseCase.getCreditCardMovements(customerId, creditCardId));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

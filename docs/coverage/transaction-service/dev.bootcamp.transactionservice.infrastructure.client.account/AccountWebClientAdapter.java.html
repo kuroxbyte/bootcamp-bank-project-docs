@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AccountWebClientAdapter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.infrastructure.client.account</a> &gt; <span class="el_source">AccountWebClientAdapter.java</span></div><h1>AccountWebClientAdapter.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.infrastructure.client.account;
+
+import dev.bootcamp.transactionservice.application.port.AccountClient;
+import dev.bootcamp.transactionservice.domain.model.account.Account;
+import dev.bootcamp.transactionservice.domain.model.account.CheckingMovementPolicy;
+import dev.bootcamp.transactionservice.domain.model.account.FixedTermMovementPolicy;
+import dev.bootcamp.transactionservice.domain.model.account.MovementPolicy;
+import dev.bootcamp.transactionservice.domain.model.account.SavingsMovementPolicy;
+import dev.bootcamp.transactionservice.domain.model.account.TransactionFee;
+import dev.bootcamp.transactionservice.infrastructure.client.RemoteLookup;
+import dev.bootcamp.transactionservice.infrastructure.client.account.dto.AccountResponseDto;
+import io.reactivex.rxjava3.core.Flowable;
+import io.reactivex.rxjava3.core.Maybe;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.function.client.WebClient;
+
+/**
+ * Implementa el puerto {@link AccountClient} consultando account-service con WebClient.
+ */
+@Component
+public class AccountWebClientAdapter implements AccountClient {
+
+    private static final String SERVICE_NAME = &quot;account-service&quot;;
+
+    private final WebClient webClient;
+    private final RemoteLookup remoteLookup;
+
+    /**
+     * Crea el cliente con la URL base configurada; las consultas pasan por un circuit breaker.
+     */
+    public AccountWebClientAdapter(
+            WebClient.Builder webClientBuilder,
+            @Value(&quot;${clients.account-service.base-url}&quot;) String baseUrl,
+<span class="fc" id="L35">            RemoteLookup remoteLookup) {</span>
+<span class="fc" id="L36">        this.webClient = webClientBuilder.baseUrl(baseUrl).build();</span>
+<span class="fc" id="L37">        this.remoteLookup = remoteLookup;</span>
+<span class="fc" id="L38">    }</span>
+
+    @Override
+    public Maybe&lt;Account&gt; findById(String accountId) {
+<span class="fc" id="L42">        return remoteLookup.findById(</span>
+                webClient
+<span class="fc" id="L44">                        .get()</span>
+<span class="fc" id="L45">                        .uri(&quot;/api/v1/accounts/{accountId}&quot;, accountId)</span>
+<span class="fc" id="L46">                        .retrieve()</span>
+<span class="fc" id="L47">                        .bodyToMono(AccountResponseDto.class)</span>
+<span class="fc" id="L48">                        .map(AccountWebClientAdapter::toDomain),</span>
+                SERVICE_NAME,
+                accountId);
+    }
+
+    @Override
+    public Flowable&lt;Account&gt; findAll() {
+<span class="fc" id="L55">        return remoteLookup.findAll(</span>
+                webClient
+<span class="fc" id="L57">                        .get()</span>
+<span class="fc" id="L58">                        .uri(&quot;/api/v1/internal/accounts&quot;)</span>
+<span class="fc" id="L59">                        .retrieve()</span>
+<span class="fc" id="L60">                        .bodyToFlux(AccountResponseDto.class)</span>
+<span class="fc" id="L61">                        .map(AccountWebClientAdapter::toDomain),</span>
+                SERVICE_NAME);
+    }
+
+    /**
+     * Convierte la cuenta en la vista local, con la regla de movimientos de su tipo.
+     */
+    private static Account toDomain(AccountResponseDto response) {
+<span class="fc" id="L69">        MovementPolicy movementPolicy =</span>
+<span class="fc bfc" id="L70" title="All 3 branches covered.">                switch (response.getType()) {</span>
+<span class="fc" id="L71">                    case SAVINGS -&gt; new SavingsMovementPolicy(response.getMaxMonthlyMovements());</span>
+<span class="fc" id="L72">                    case CHECKING -&gt; new CheckingMovementPolicy();</span>
+                    case FIXED_TERM -&gt;
+<span class="fc" id="L74">                            new FixedTermMovementPolicy(response.getMovementDayOfMonth());</span>
+                };
+<span class="fc" id="L76">        return new Account(</span>
+<span class="fc" id="L77">                response.getId(),</span>
+<span class="fc" id="L78">                response.getCustomerId(),</span>
+                movementPolicy,
+<span class="fc" id="L80">                response.getOpeningAmount(),</span>
+<span class="fc" id="L81">                response.getOpenedAt(),</span>
+<span class="fc" id="L82">                response.getMinimumDailyAverage(),</span>
+                new TransactionFee(
+<span class="fc" id="L84">                        response.getFreeMonthlyTransactions(),</span>
+<span class="fc" id="L85">                        response.getTransactionFee()),</span>
+<span class="fc" id="L86">                response.getMaintenanceFee());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

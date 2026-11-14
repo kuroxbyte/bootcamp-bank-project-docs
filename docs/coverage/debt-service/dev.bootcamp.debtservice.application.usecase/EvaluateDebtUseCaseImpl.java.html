@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EvaluateDebtUseCaseImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">debt-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.debtservice.application.usecase</a> &gt; <span class="el_source">EvaluateDebtUseCaseImpl.java</span></div><h1>EvaluateDebtUseCaseImpl.java</h1><pre class="source lang-java linenums">package dev.bootcamp.debtservice.application.usecase;
+
+import dev.bootcamp.debtservice.application.port.DebtEventPublisher;
+import dev.bootcamp.debtservice.application.port.DebtRepository;
+import dev.bootcamp.debtservice.application.port.DebtStatusRepository;
+import dev.bootcamp.debtservice.domain.model.CustomerDebtStatus;
+import io.reactivex.rxjava3.core.Completable;
+import lombok.RequiredArgsConstructor;
+
+import java.time.Clock;
+import java.time.LocalDate;
+
+/**
+ * Implementación de {@link EvaluateDebtUseCase}.
+ */
+@RequiredArgsConstructor
+public class EvaluateDebtUseCaseImpl implements EvaluateDebtUseCase {
+    private final DebtRepository debtRepository;
+    private final DebtStatusRepository debtStatusRepository;
+    private final DebtEventPublisher debtEventPublisher;
+    private final Clock clock;
+
+    @Override
+    public Completable evaluate(String customerId) {
+<span class="fc" id="L25">        return debtRepository.findByCustomerId(customerId)</span>
+<span class="fc" id="L26">                .map(debt -&gt; debt.evaluate(LocalDate.now(clock)))</span>
+<span class="fc" id="L27">                .flatMapCompletable(status -&gt; debtStatusRepository</span>
+<span class="fc" id="L28">                        .findLastHasOverdueDebt(customerId)</span>
+<span class="fc" id="L29">                        .defaultIfEmpty(false)</span>
+<span class="fc" id="L30">                        .flatMapCompletable(lastHasOverdueDebt -&gt;</span>
+<span class="fc bfc" id="L31" title="All 2 branches covered.">                                lastHasOverdueDebt == status.hasOverdueDebt()</span>
+<span class="fc" id="L32">                                        ? Completable.complete()</span>
+<span class="fc" id="L33">                                        : publishAndSave(status)));</span>
+    }
+
+    @Override
+    public Completable evaluateAll() {
+<span class="fc" id="L38">        return debtRepository.findCustomerIds().concatMapCompletableDelayError(this::evaluate);</span>
+    }
+
+    private Completable publishAndSave(CustomerDebtStatus status) {
+<span class="fc" id="L42">        return debtEventPublisher.publishStatusChanged(status)</span>
+<span class="fc" id="L43">                .andThen(Completable.defer(() -&gt; debtStatusRepository.save(status)));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

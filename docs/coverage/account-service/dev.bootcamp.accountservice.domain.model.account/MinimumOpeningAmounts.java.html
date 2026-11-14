@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MinimumOpeningAmounts.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">account-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.accountservice.domain.model.account</a> &gt; <span class="el_source">MinimumOpeningAmounts.java</span></div><h1>MinimumOpeningAmounts.java</h1><pre class="source lang-java linenums">package dev.bootcamp.accountservice.domain.model.account;
+
+import dev.bootcamp.accountservice.domain.exception.BusinessRuleException;
+
+import java.math.BigDecimal;
+
+/**
+ * Monto mínimo de apertura de cada tipo de cuenta; cada uno puede ser 0.
+ *
+ * @param savings   mínimo de la cuenta de ahorro
+ * @param checking  mínimo de la cuenta corriente
+ * @param fixedTerm mínimo de la cuenta a plazo fijo
+ */
+public record MinimumOpeningAmounts(BigDecimal savings, BigDecimal checking, BigDecimal fixedTerm) {
+
+    /**
+     * Valida que ningún mínimo sea negativo.
+     *
+     * @throws BusinessRuleException si algún mínimo falta o es negativo
+     */
+<span class="fc" id="L21">    public MinimumOpeningAmounts {</span>
+<span class="fc bfc" id="L22" title="All 2 branches covered.">        for (BigDecimal minimum : new BigDecimal[] {savings, checking, fixedTerm}) {</span>
+<span class="pc bpc" id="L23" title="1 of 4 branches missed.">            if (minimum == null || minimum.signum() &lt; 0) {</span>
+<span class="fc" id="L24">                throw new BusinessRuleException(</span>
+                        &quot;El monto mínimo de apertura no puede ser negativo&quot;);
+            }
+        }
+<span class="fc" id="L28">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

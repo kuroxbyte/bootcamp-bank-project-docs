@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DebitCardController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">account-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.accountservice.infrastructure.web.controller</a> &gt; <span class="el_source">DebitCardController.java</span></div><h1>DebitCardController.java</h1><pre class="source lang-java linenums">package dev.bootcamp.accountservice.infrastructure.web.controller;
+
+import dev.bootcamp.accountservice.application.usecase.GetDebitCardsUseCase;
+import dev.bootcamp.accountservice.application.usecase.IssueDebitCardUseCase;
+import dev.bootcamp.accountservice.application.usecase.UpdateDebitCardAccountsUseCase;
+import dev.bootcamp.accountservice.domain.model.debitcard.DebitCard;
+import dev.bootcamp.accountservice.infrastructure.web.api.DebitCardsApi;
+import dev.bootcamp.accountservice.infrastructure.web.dto.DebitCardAccountRequestDto;
+import dev.bootcamp.accountservice.infrastructure.web.dto.DebitCardRequestDto;
+import dev.bootcamp.accountservice.infrastructure.web.dto.DebitCardResponseDto;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+/**
+ * Endpoints de tarjetas de débito definidos en el contrato OpenAPI.
+ */
+<span class="fc" id="L24">@Slf4j</span>
+@RestController
+@RequiredArgsConstructor
+public class DebitCardController implements DebitCardsApi {
+
+    private final IssueDebitCardUseCase issueDebitCardUseCase;
+    private final GetDebitCardsUseCase getDebitCardsUseCase;
+    private final UpdateDebitCardAccountsUseCase updateDebitCardAccountsUseCase;
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;DebitCardResponseDto&gt;&gt; issueDebitCard(
+            String customerId,
+            Mono&lt;DebitCardRequestDto&gt; debitCardRequestDto,
+            ServerWebExchange exchange) {
+<span class="fc" id="L38">        return debitCardRequestDto</span>
+<span class="fc" id="L39">                .flatMap(request -&gt; toMono(issueDebitCardUseCase.execute(</span>
+                        customerId,
+<span class="fc" id="L41">                        request.getPrimaryAccountId(),</span>
+<span class="fc" id="L42">                        request.getAccountIds())))</span>
+<span class="fc" id="L43">                .doOnNext(card -&gt; log.info(</span>
+                        &quot;Debit card issued debitCardId={} customerId={}&quot;,
+<span class="fc" id="L45">                        card.getId(),</span>
+                        customerId))
+<span class="fc" id="L47">                .map(card -&gt; ResponseEntity.status(HttpStatus.CREATED).body(toResponse(card)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;Flux&lt;DebitCardResponseDto&gt;&gt;&gt; listDebitCards(
+            String customerId,
+            ServerWebExchange exchange) {
+<span class="fc" id="L54">        log.debug(&quot;Listing debit cards customerId={}&quot;, customerId);</span>
+<span class="fc" id="L55">        return Mono.just(ResponseEntity.ok(</span>
+<span class="fc" id="L56">                Flux.from(getDebitCardsUseCase.findByCustomerId(customerId))</span>
+<span class="fc" id="L57">                        .map(DebitCardController::toResponse)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;DebitCardResponseDto&gt;&gt; getDebitCardById(
+            String customerId,
+            String debitCardId,
+            ServerWebExchange exchange) {
+<span class="fc" id="L65">        return toMono(getDebitCardsUseCase.findById(customerId, debitCardId))</span>
+<span class="fc" id="L66">                .map(card -&gt; ResponseEntity.ok(toResponse(card)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;DebitCardResponseDto&gt;&gt; associateDebitCardAccount(
+            String customerId,
+            String debitCardId,
+            Mono&lt;DebitCardAccountRequestDto&gt; debitCardAccountRequestDto,
+            ServerWebExchange exchange) {
+<span class="fc" id="L75">        return debitCardAccountRequestDto</span>
+<span class="fc" id="L76">                .flatMap(request -&gt; toMono(updateDebitCardAccountsUseCase.associateAccount(</span>
+                        customerId,
+                        debitCardId,
+<span class="fc" id="L79">                        request.getAccountId())))</span>
+<span class="fc" id="L80">                .map(card -&gt; ResponseEntity.ok(toResponse(card)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;DebitCardResponseDto&gt;&gt; changeDebitCardPrimaryAccount(
+            String customerId,
+            String debitCardId,
+            Mono&lt;DebitCardAccountRequestDto&gt; debitCardAccountRequestDto,
+            ServerWebExchange exchange) {
+<span class="fc" id="L89">        return debitCardAccountRequestDto</span>
+<span class="fc" id="L90">                .flatMap(request -&gt; toMono(updateDebitCardAccountsUseCase.changePrimaryAccount(</span>
+                        customerId,
+                        debitCardId,
+<span class="fc" id="L93">                        request.getAccountId())))</span>
+<span class="fc" id="L94">                .map(card -&gt; ResponseEntity.ok(toResponse(card)));</span>
+    }
+
+    private static Mono&lt;DebitCard&gt; toMono(Single&lt;DebitCard&gt; card) {
+<span class="fc" id="L98">        return Mono.from(card.toFlowable());</span>
+    }
+
+    private static DebitCardResponseDto toResponse(DebitCard card) {
+<span class="fc" id="L102">        return new DebitCardResponseDto(</span>
+<span class="fc" id="L103">                card.getId(),</span>
+<span class="fc" id="L104">                card.getCustomerId(),</span>
+<span class="fc" id="L105">                card.getPrimaryAccountId(),</span>
+<span class="fc" id="L106">                card.getAccountIds(),</span>
+<span class="fc" id="L107">                card.getIssuedAt());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DebitCardKafkaEventPublisher.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">account-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.accountservice.infrastructure.messaging</a> &gt; <span class="el_source">DebitCardKafkaEventPublisher.java</span></div><h1>DebitCardKafkaEventPublisher.java</h1><pre class="source lang-java linenums">package dev.bootcamp.accountservice.infrastructure.messaging;
+
+import dev.bootcamp.accountservice.application.port.DebitCardEventPublisher;
+import dev.bootcamp.accountservice.domain.model.debitcard.DebitCard;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.stereotype.Component;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * Implementa el puerto {@link DebitCardEventPublisher} publicando en el tópico
+ * {@code debit-card-events}. Cada evento lleva el estado completo de la tarjeta y la clave del
+ * mensaje es el id del cliente. El contrato está en {@code docs/events/asyncapi.yaml} del
+ * repositorio raíz.
+ *
+ * &lt;p&gt;Si Kafka no responde ({@code max.block.ms}, 1 s en config-repo), el error se registra y la
+ * operación no falla: el evento se pierde (limitación conocida; evitarla requiere el patrón
+ * outbox).
+ */
+<span class="fc" id="L29">@Slf4j</span>
+@Component
+public class DebitCardKafkaEventPublisher implements DebitCardEventPublisher {
+
+    private final KafkaTemplate&lt;String, String&gt; kafkaTemplate;
+    private final JsonMapper jsonMapper;
+    private final Clock clock;
+    private final String topic;
+
+    /**
+     * Crea el publicador con el tópico configurado.
+     */
+    public DebitCardKafkaEventPublisher(
+            KafkaTemplate&lt;String, String&gt; kafkaTemplate,
+            JsonMapper jsonMapper,
+            Clock clock,
+<span class="fc" id="L45">            @Value(&quot;${messaging.topics.debit-card-events}&quot;) String topic) {</span>
+<span class="fc" id="L46">        this.kafkaTemplate = kafkaTemplate;</span>
+<span class="fc" id="L47">        this.jsonMapper = jsonMapper;</span>
+<span class="fc" id="L48">        this.clock = clock;</span>
+<span class="fc" id="L49">        this.topic = topic;</span>
+<span class="fc" id="L50">    }</span>
+
+    @Override
+    public Completable publishIssued(DebitCard debitCard) {
+<span class="fc" id="L54">        return publish(&quot;DebitCardIssued&quot;, debitCard);</span>
+    }
+
+    @Override
+    public Completable publishAccountsUpdated(DebitCard debitCard) {
+<span class="fc" id="L59">        return publish(&quot;DebitCardAccountsUpdated&quot;, debitCard);</span>
+    }
+
+    private Completable publish(String eventType, DebitCard debitCard) {
+<span class="fc" id="L63">        return Completable.defer(() -&gt; {</span>
+<span class="fc" id="L64">            Map&lt;String, Object&gt; event = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L65">            event.put(&quot;eventType&quot;, eventType);</span>
+<span class="fc" id="L66">            event.put(&quot;eventId&quot;, UUID.randomUUID().toString());</span>
+<span class="fc" id="L67">            event.put(&quot;debitCardId&quot;, debitCard.getId());</span>
+<span class="fc" id="L68">            event.put(&quot;customerId&quot;, debitCard.getCustomerId());</span>
+<span class="fc" id="L69">            event.put(&quot;primaryAccountId&quot;, debitCard.getPrimaryAccountId());</span>
+<span class="fc" id="L70">            event.put(&quot;accountIds&quot;, debitCard.getAccountIds());</span>
+<span class="fc" id="L71">            event.put(&quot;occurredAt&quot;, Instant.now(clock).toString());</span>
+<span class="fc" id="L72">            return Completable.fromCompletionStage(kafkaTemplate.send(</span>
+                    topic,
+<span class="fc" id="L74">                    debitCard.getCustomerId(),</span>
+<span class="fc" id="L75">                    jsonMapper.writeValueAsString(event)));</span>
+        })
+                // send() puede bloquear mientras busca al broker: fuera del hilo de eventos.
+<span class="fc" id="L78">                .subscribeOn(Schedulers.io())</span>
+<span class="fc" id="L79">                .doOnComplete(() -&gt; log.info(</span>
+                        &quot;{} published debitCardId={}&quot;,
+                        eventType,
+<span class="fc" id="L82">                        debitCard.getId()))</span>
+<span class="fc" id="L83">                .onErrorComplete(error -&gt; {</span>
+<span class="fc" id="L84">                    log.error(</span>
+                            &quot;{} could not be published debitCardId={}&quot;,
+                            eventType,
+<span class="fc" id="L87">                            debitCard.getId(),</span>
+                            error);
+<span class="fc" id="L89">                    return true;</span>
+                });
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

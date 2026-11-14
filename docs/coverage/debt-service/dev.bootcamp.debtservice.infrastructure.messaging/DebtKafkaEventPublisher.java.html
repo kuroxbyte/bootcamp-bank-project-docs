@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DebtKafkaEventPublisher.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">debt-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.debtservice.infrastructure.messaging</a> &gt; <span class="el_source">DebtKafkaEventPublisher.java</span></div><h1>DebtKafkaEventPublisher.java</h1><pre class="source lang-java linenums">package dev.bootcamp.debtservice.infrastructure.messaging;
+
+import dev.bootcamp.debtservice.application.port.DebtEventPublisher;
+import dev.bootcamp.debtservice.domain.model.CustomerDebtStatus;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.core.KafkaTemplate;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * Implementa el puerto {@link DebtEventPublisher} publicando {@code CustomerDebtStatusChanged} en
+ * el tópico {@code debt-events}. La clave de cada mensaje es el id del cliente. El contrato está en
+ * {@code docs/events/asyncapi.yaml} del repositorio raíz.
+ *
+ * &lt;p&gt;A diferencia de los demás publicadores, un error no se descarta: termina con error para que
+ * el estado no se dé por publicado y se vuelva a intentar.
+ */
+<span class="fc" id="L26">@Slf4j</span>
+@RequiredArgsConstructor
+public class DebtKafkaEventPublisher implements DebtEventPublisher {
+
+    private final KafkaTemplate&lt;String, String&gt; kafkaTemplate;
+    private final JsonMapper jsonMapper;
+    private final Clock clock;
+    private final String topic;
+
+    @Override
+    public Completable publishStatusChanged(CustomerDebtStatus status) {
+<span class="fc" id="L37">        return Completable.defer(() -&gt; {</span>
+<span class="fc" id="L38">            Map&lt;String, Object&gt; event = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc" id="L39">            event.put(&quot;eventType&quot;, &quot;CustomerDebtStatusChanged&quot;);</span>
+<span class="fc" id="L40">            event.put(&quot;eventId&quot;, UUID.randomUUID().toString());</span>
+<span class="fc" id="L41">            event.put(&quot;customerId&quot;, status.customerId());</span>
+<span class="fc" id="L42">            event.put(&quot;hasOverdueDebt&quot;, status.hasOverdueDebt());</span>
+<span class="fc" id="L43">            event.put(&quot;overdueAmount&quot;, status.overdueAmount());</span>
+<span class="fc" id="L44">            event.put(&quot;occurredAt&quot;, Instant.now(clock).toString());</span>
+<span class="fc" id="L45">            return Completable.fromCompletionStage(kafkaTemplate.send(</span>
+                    topic,
+<span class="fc" id="L47">                    status.customerId(),</span>
+<span class="fc" id="L48">                    jsonMapper.writeValueAsString(event)));</span>
+        })
+                // send() puede bloquear mientras busca al broker: fuera del hilo que lo llama.
+<span class="fc" id="L51">                .subscribeOn(Schedulers.io())</span>
+<span class="fc" id="L52">                .doOnComplete(() -&gt; log.info(</span>
+                        &quot;CustomerDebtStatusChanged published customerId={} hasOverdueDebt={}&quot;
+                                + &quot; overdueAmount={}&quot;,
+<span class="fc" id="L55">                        status.customerId(),</span>
+<span class="fc" id="L56">                        status.hasOverdueDebt(),</span>
+<span class="fc" id="L57">                        status.overdueAmount()));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

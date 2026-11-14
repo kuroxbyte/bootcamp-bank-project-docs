@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TransferUseCaseImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.application.usecase</a> &gt; <span class="el_source">TransferUseCaseImpl.java</span></div><h1>TransferUseCaseImpl.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.application.usecase;
+
+import dev.bootcamp.transactionservice.application.port.AccountClient;
+import dev.bootcamp.transactionservice.application.port.MovementRepository;
+import dev.bootcamp.transactionservice.domain.exception.NotFoundException;
+import dev.bootcamp.transactionservice.domain.model.account.Account;
+import dev.bootcamp.transactionservice.domain.model.movement.Movement;
+import dev.bootcamp.transactionservice.domain.model.transfer.Transfer;
+import dev.bootcamp.transactionservice.domain.model.transfer.TransferType;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.List;
+
+/**
+ * Implementación de {@link TransferUseCase}.
+ */
+@RequiredArgsConstructor
+public class TransferUseCaseImpl implements TransferUseCase {
+    private final AccountClient accountClient;
+    private final MovementRepository movementRepository;
+
+    @Override
+    public Single&lt;Transfer&gt; transferToOwnAccount(
+            String customerId,
+            String sourceAccountId,
+            String targetAccountId,
+            BigDecimal amount,
+            LocalDate date) {
+<span class="fc" id="L33">        return transfer(</span>
+                TransferType.OWN,
+                customerId,
+                sourceAccountId,
+                targetAccountId,
+                amount,
+                date);
+    }
+
+    @Override
+    public Single&lt;Transfer&gt; transferToThirdParty(
+            String customerId,
+            String sourceAccountId,
+            String targetAccountId,
+            BigDecimal amount,
+            LocalDate date) {
+<span class="fc" id="L49">        return transfer(</span>
+                TransferType.THIRD_PARTY,
+                customerId,
+                sourceAccountId,
+                targetAccountId,
+                amount,
+                date);
+    }
+
+    private Single&lt;Transfer&gt; transfer(
+            TransferType type,
+            String customerId,
+            String sourceAccountId,
+            String targetAccountId,
+            BigDecimal amount,
+            LocalDate date) {
+<span class="fc" id="L65">        return Single.zip(</span>
+<span class="fc" id="L66">                        findAccount(sourceAccountId, &quot;La cuenta origen no existe&quot;),</span>
+<span class="fc" id="L67">                        findAccount(targetAccountId, &quot;La cuenta destino no existe&quot;),</span>
+<span class="fc" id="L68">                        (source, target) -&gt; charge(</span>
+<span class="fc" id="L69">                                Transfer.between(type, customerId, source, target, amount, date),</span>
+                                source,
+                                target))
+<span class="fc" id="L72">                .flatMap(charged -&gt; charged)</span>
+<span class="fc" id="L73">                .flatMap(this::save);</span>
+    }
+
+    private Single&lt;Account&gt; findAccount(String accountId, String notFoundMessage) {
+<span class="fc" id="L77">        return accountClient</span>
+<span class="fc" id="L78">                .findById(accountId)</span>
+<span class="fc" id="L79">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(notFoundMessage)));</span>
+    }
+
+    // Aplica a cada movimiento las reglas de su cuenta y le asigna su comisión.
+    private Single&lt;Transfer&gt; charge(Transfer transfer, Account source, Account target) {
+<span class="fc" id="L84">        return Single.zip(</span>
+<span class="fc" id="L85">                prepare(source, transfer.outgoing()),</span>
+<span class="fc" id="L86">                prepare(target, transfer.incoming()),</span>
+<span class="fc" id="L87">                transfer::withMovements);</span>
+    }
+
+    private Single&lt;Movement&gt; prepare(Account account, Movement movement) {
+<span class="fc" id="L91">        return Single.zip(</span>
+<span class="fc" id="L92">                movementRepository.countByAccountIdAndMonth(</span>
+<span class="fc" id="L93">                        account.id(),</span>
+<span class="fc" id="L94">                        YearMonth.from(movement.date())),</span>
+<span class="fc" id="L95">                movementRepository.getBalance(account.id()),</span>
+<span class="fc" id="L96">                (movementsInMonth, movementsBalance) -&gt; account.prepareMovement(</span>
+                        movement,
+<span class="fc" id="L98">                        movementsInMonth,</span>
+<span class="fc" id="L99">                        account.balance(movementsBalance)));</span>
+    }
+
+    // Guarda los dos movimientos en una sola operación.
+    private Single&lt;Transfer&gt; save(Transfer transfer) {
+<span class="fc" id="L104">        return movementRepository</span>
+<span class="fc" id="L105">                .saveAll(List.of(transfer.outgoing(), transfer.incoming()))</span>
+<span class="fc" id="L106">                .toList()</span>
+<span class="fc" id="L107">                .map(saved -&gt; transfer.withMovements(saved.get(0), saved.get(1)));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

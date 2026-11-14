@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ReportController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.infrastructure.web.controller</a> &gt; <span class="el_source">ReportController.java</span></div><h1>ReportController.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.infrastructure.web.controller;
+
+import dev.bootcamp.transactionservice.application.usecase.GenerateProductReportUseCase;
+import dev.bootcamp.transactionservice.application.usecase.GetProductMovementsUseCase;
+import dev.bootcamp.transactionservice.infrastructure.web.api.ReportsApi;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.ProductMovementResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.dto.ProductReportResponseDto;
+import dev.bootcamp.transactionservice.infrastructure.web.mapper.TransactionWebMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.time.LocalDate;
+
+/**
+ * Endpoints de reportes del banco.
+ */
+<span class="fc" id="L22">@Slf4j</span>
+@RestController
+@RequiredArgsConstructor
+public class ReportController implements ReportsApi {
+
+    private final GenerateProductReportUseCase generateProductReportUseCase;
+    private final GetProductMovementsUseCase getProductMovementsUseCase;
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;ProductReportResponseDto&gt;&gt; getProductReport(
+            LocalDate from,
+            LocalDate to,
+            ServerWebExchange exchange) {
+<span class="fc" id="L35">        log.info(&quot;Generating product report from={} to={}&quot;, from, to);</span>
+<span class="fc" id="L36">        return Mono.from(generateProductReportUseCase.execute(from, to).toFlowable())</span>
+<span class="fc" id="L37">                .map(report -&gt; ResponseEntity.ok(TransactionWebMapper.toResponse(report)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;Flux&lt;ProductMovementResponseDto&gt;&gt;&gt; getCreditCardLastMovements(
+            String customerId,
+            String creditCardId,
+            ServerWebExchange exchange) {
+<span class="fc" id="L45">        log.debug(</span>
+                &quot;Fetching last movements creditCardId={} customerId={}&quot;,
+                creditCardId,
+                customerId);
+<span class="fc" id="L49">        return MovementResponses.of(</span>
+<span class="fc" id="L50">                getProductMovementsUseCase.getCreditCardLastMovements(customerId, creditCardId));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;Flux&lt;ProductMovementResponseDto&gt;&gt;&gt; getDebitCardLastMovements(
+            String customerId,
+            String debitCardId,
+            ServerWebExchange exchange) {
+<span class="fc" id="L58">        log.debug(</span>
+                &quot;Fetching last movements debitCardId={} customerId={}&quot;,
+                debitCardId,
+                customerId);
+<span class="fc" id="L62">        return MovementResponses.of(</span>
+<span class="fc" id="L63">                getProductMovementsUseCase.getDebitCardLastMovements(customerId, debitCardId));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

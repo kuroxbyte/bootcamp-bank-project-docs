@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CreateBankAccountUseCaseImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">account-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.accountservice.application.usecase</a> &gt; <span class="el_source">CreateBankAccountUseCaseImpl.java</span></div><h1>CreateBankAccountUseCaseImpl.java</h1><pre class="source lang-java linenums">package dev.bootcamp.accountservice.application.usecase;
+
+import dev.bootcamp.accountservice.application.port.BankAccountRepository;
+import dev.bootcamp.accountservice.application.port.CreditCardClient;
+import dev.bootcamp.accountservice.application.port.CustomerClient;
+import dev.bootcamp.accountservice.application.rule.OverdueDebtRule;
+import dev.bootcamp.accountservice.domain.exception.BusinessRuleException;
+import dev.bootcamp.accountservice.domain.exception.NotFoundException;
+import dev.bootcamp.accountservice.domain.model.account.BankAccount;
+import dev.bootcamp.accountservice.domain.model.account.CheckingAccount;
+import dev.bootcamp.accountservice.domain.model.account.FixedTermAccount;
+import dev.bootcamp.accountservice.domain.model.account.MinimumOpeningAmounts;
+import dev.bootcamp.accountservice.domain.model.account.OpeningAmount;
+import dev.bootcamp.accountservice.domain.model.account.SavingsAccount;
+import dev.bootcamp.accountservice.domain.model.account.TransactionFee;
+import dev.bootcamp.accountservice.domain.model.account.TransactionFees;
+import dev.bootcamp.accountservice.domain.model.account.VipSavingsAccount;
+import dev.bootcamp.accountservice.domain.model.customer.Customer;
+import dev.bootcamp.accountservice.domain.model.customer.CustomerProfile;
+import dev.bootcamp.accountservice.domain.model.customer.CustomerType;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.util.List;
+
+/**
+ * Implementación de {@link CreateBankAccountUseCase}.
+ */
+@RequiredArgsConstructor
+public class CreateBankAccountUseCaseImpl implements CreateBankAccountUseCase {
+    private static final String PERSONAL_ACCOUNT_LIMIT =
+            &quot;Un cliente personal solo puede tener una cuenta de este tipo&quot;;
+    private static final String CREDIT_CARD_REQUIRED =
+            &quot;El cliente debe tener una tarjeta de crédito con el banco para abrir esta cuenta&quot;;
+
+    private final BankAccountRepository bankAccountRepository;
+    private final CustomerClient customerClient;
+    private final CreditCardClient creditCardClient;
+
+    /**
+     * Regla de deuda vencida que comparten todos los productos.
+     */
+    private final OverdueDebtRule overdueDebtRule;
+
+    /**
+     * Mínimos de apertura por tipo de cuenta.
+     */
+    private final MinimumOpeningAmounts minimumOpeningAmounts;
+
+    /**
+     * Comisión por transacción por tipo de cuenta.
+     */
+    private final TransactionFees transactionFees;
+
+    /**
+     * Mínimo de promedio diario mensual de la cuenta de ahorro VIP.
+     */
+    private final BigDecimal vipMinimumDailyAverage;
+
+    /**
+     * Reloj con el que se fija la fecha de apertura.
+     */
+    private final Clock clock;
+
+    @Override
+    public Single&lt;SavingsAccount&gt; openSavingsAccount(
+            String customerId,
+            int maxMonthlyMovements,
+            BigDecimal openingAmount) {
+<span class="fc" id="L73">        return findCustomer(customerId)</span>
+<span class="fc" id="L74">                .map(customer -&gt; savingsAccount(customer, maxMonthlyMovements, openingAmount))</span>
+<span class="fc" id="L75">                .flatMap(account -&gt; validateCreditCard(account, CustomerProfile.VIP))</span>
+<span class="fc" id="L76">                .flatMap(account -&gt; validatePersonalLimit(account, SavingsAccount.class))</span>
+<span class="fc" id="L77">                .flatMap(account -&gt; save(account, transactionFees.savings()));</span>
+    }
+
+    @Override
+    public Single&lt;CheckingAccount&gt; openCheckingAccount(
+            String customerId,
+            BigDecimal maintenanceFee,
+            List&lt;String&gt; holderIds,
+            List&lt;String&gt; authorizedSignerIds,
+            BigDecimal openingAmount) {
+<span class="fc" id="L87">        return findCustomer(customerId)</span>
+<span class="fc" id="L88">                .map(customer -&gt; new CheckingAccount(</span>
+                        customer,
+<span class="fc" id="L90">                        new OpeningAmount(minimumOpeningAmounts.checking(), openingAmount),</span>
+                        maintenanceFee,
+                        holderIds,
+                        authorizedSignerIds))
+<span class="fc" id="L94">                .flatMap(account -&gt; validateCreditCard(account, CustomerProfile.PYME))</span>
+<span class="fc" id="L95">                .flatMap(account -&gt; validatePersonalLimit(account, CheckingAccount.class))</span>
+<span class="fc" id="L96">                .flatMap(account -&gt; save(account, transactionFees.checking()));</span>
+    }
+
+    @Override
+    public Single&lt;FixedTermAccount&gt; openFixedTermAccount(
+            String customerId,
+            int movementDayOfMonth,
+            BigDecimal openingAmount) {
+<span class="fc" id="L104">        return findCustomer(customerId)</span>
+<span class="fc" id="L105">                .map(customer -&gt; new FixedTermAccount(</span>
+                        customer,
+<span class="fc" id="L107">                        new OpeningAmount(minimumOpeningAmounts.fixedTerm(), openingAmount),</span>
+                        movementDayOfMonth))
+<span class="fc" id="L109">                .flatMap(account -&gt; save(account, transactionFees.fixedTerm()));</span>
+    }
+
+    private Single&lt;Customer&gt; findCustomer(String customerId) {
+<span class="fc" id="L113">        return customerClient</span>
+<span class="fc" id="L114">                .findById(customerId)</span>
+<span class="fc" id="L115">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(&quot;El cliente no existe&quot;)))</span>
+<span class="fc" id="L116">                .flatMap(customer -&gt; overdueDebtRule.verify(customerId)</span>
+<span class="fc" id="L117">                        .andThen(Single.just(customer)));</span>
+    }
+
+    // Un cliente VIP siempre abre la cuenta de ahorro VIP.
+    private SavingsAccount savingsAccount(
+            Customer customer,
+            int maxMonthlyMovements,
+            BigDecimal openingAmount) {
+<span class="fc" id="L125">        OpeningAmount opening = new OpeningAmount(minimumOpeningAmounts.savings(), openingAmount);</span>
+<span class="fc bfc" id="L126" title="All 2 branches covered.">        if (customer.profile() == CustomerProfile.VIP) {</span>
+<span class="fc" id="L127">            return new VipSavingsAccount(</span>
+                    customer,
+                    opening,
+                    maxMonthlyMovements,
+                    vipMinimumDailyAverage);
+        }
+<span class="fc" id="L133">        return new SavingsAccount(customer, opening, maxMonthlyMovements);</span>
+    }
+
+    // VIP (ahorro) y PYME (corriente): el cliente debe tener una tarjeta de crédito al abrirla.
+    private &lt;T extends BankAccount&gt; Single&lt;T&gt; validateCreditCard(
+            T account,
+            CustomerProfile profileRequiringCard) {
+<span class="fc bfc" id="L140" title="All 2 branches covered.">        if (account.getCustomer().profile() != profileRequiringCard) {</span>
+<span class="fc" id="L141">            return Single.just(account);</span>
+        }
+<span class="fc" id="L143">        return creditCardClient</span>
+<span class="fc" id="L144">                .hasCreditCard(account.getCustomer().id())</span>
+<span class="fc bfc" id="L145" title="All 2 branches covered.">                .flatMap(hasCard -&gt; hasCard</span>
+<span class="fc" id="L146">                        ? Single.just(account)</span>
+<span class="fc" id="L147">                        : Single.error(new BusinessRuleException(CREDIT_CARD_REQUIRED)));</span>
+    }
+
+    // Personal: máximo una cuenta de ahorro (estándar o VIP) y una cuenta corriente.
+    private &lt;T extends BankAccount&gt; Single&lt;T&gt; validatePersonalLimit(
+            T account,
+            Class&lt;? extends BankAccount&gt; product) {
+<span class="fc bfc" id="L154" title="All 2 branches covered.">        if (account.getCustomer().type() != CustomerType.PERSONAL) {</span>
+<span class="fc" id="L155">            return Single.just(account);</span>
+        }
+<span class="fc" id="L157">        return bankAccountRepository</span>
+<span class="fc" id="L158">                .findByCustomerId(account.getCustomer().id())</span>
+<span class="fc" id="L159">                .any(product::isInstance)</span>
+<span class="fc bfc" id="L160" title="All 2 branches covered.">                .flatMap(alreadyHasProduct -&gt; alreadyHasProduct</span>
+<span class="fc" id="L161">                        ? Single.error(new BusinessRuleException(PERSONAL_ACCOUNT_LIMIT))</span>
+<span class="fc" id="L162">                        : Single.just(account));</span>
+    }
+
+    private &lt;T extends BankAccount&gt; Single&lt;T&gt; save(T account, TransactionFee transactionFee) {
+<span class="fc" id="L166">        account.setOpenedAt(LocalDate.now(clock));</span>
+<span class="fc" id="L167">        account.setTransactionFee(transactionFee);</span>
+<span class="fc" id="L168">        return bankAccountRepository.save(account);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

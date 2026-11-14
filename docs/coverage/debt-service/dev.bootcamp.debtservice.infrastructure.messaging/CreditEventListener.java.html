@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CreditEventListener.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">debt-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.debtservice.infrastructure.messaging</a> &gt; <span class="el_source">CreditEventListener.java</span></div><h1>CreditEventListener.java</h1><pre class="source lang-java linenums">package dev.bootcamp.debtservice.infrastructure.messaging;
+
+import dev.bootcamp.debtservice.application.usecase.RecordDebtEventUseCase;
+import dev.bootcamp.debtservice.domain.model.Credit;
+import dev.bootcamp.debtservice.domain.model.CreditCard;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.time.LocalDate;
+
+/**
+ * Consume el tópico {@code credit-events} de credit-service: créditos y tarjetas otorgados. El
+ * contrato está en {@code docs/events/asyncapi.yaml} del repositorio raíz.
+ *
+ * &lt;p&gt;Ignora los tipos de evento que no conoce. Si registrar falla, la excepción hace que Kafka
+ * vuelva a entregar el mensaje.
+ */
+<span class="fc" id="L22">@Slf4j</span>
+@Component
+@RequiredArgsConstructor
+public class CreditEventListener {
+
+    private final RecordDebtEventUseCase recordDebtEventUseCase;
+    private final JsonMapper jsonMapper;
+
+    /**
+     * Procesa un evento del tópico de productos de crédito.
+     *
+     * @param message evento en JSON
+     */
+    @KafkaListener(topics = &quot;${messaging.topics.credit-events}&quot;)
+    public void onCreditEvent(String message) {
+<span class="fc" id="L37">        JsonNode event = jsonMapper.readTree(message);</span>
+<span class="fc" id="L38">        String eventType = event.path(&quot;eventType&quot;).asString();</span>
+<span class="fc" id="L39">        String customerId = event.path(&quot;customerId&quot;).asString();</span>
+<span class="fc bfc" id="L40" title="All 3 branches covered.">        switch (eventType) {</span>
+<span class="fc" id="L41">            case &quot;CreditGranted&quot; -&gt; recordDebtEventUseCase.recordCredit(new Credit(</span>
+<span class="fc" id="L42">                    event.get(&quot;creditId&quot;).asString(),</span>
+                    customerId,
+<span class="fc" id="L44">                    event.get(&quot;amount&quot;).decimalValue(),</span>
+<span class="fc" id="L45">                    LocalDate.parse(event.get(&quot;dueDate&quot;).asString()))).blockingAwait();</span>
+<span class="fc" id="L46">            case &quot;CreditCardGranted&quot; -&gt; recordDebtEventUseCase.recordCreditCard(new CreditCard(</span>
+<span class="fc" id="L47">                    event.get(&quot;creditCardId&quot;).asString(),</span>
+                    customerId,
+<span class="fc" id="L49">                    event.get(&quot;paymentDueDay&quot;).asInt())).blockingAwait();</span>
+            default -&gt; {
+<span class="fc" id="L51">                log.debug(&quot;Ignoring credit event type={}&quot;, eventType);</span>
+<span class="fc" id="L52">                return;</span>
+            }
+        }
+<span class="fc" id="L55">        log.info(&quot;{} recorded customerId={}&quot;, eventType, customerId);</span>
+<span class="fc" id="L56">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

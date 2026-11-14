@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LinkDebitCardUseCaseImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">yanki-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.yankiservice.application.usecase</a> &gt; <span class="el_source">LinkDebitCardUseCaseImpl.java</span></div><h1>LinkDebitCardUseCaseImpl.java</h1><pre class="source lang-java linenums">package dev.bootcamp.yankiservice.application.usecase;
+
+import dev.bootcamp.yankiservice.application.port.AccountOperationPublisher;
+import dev.bootcamp.yankiservice.application.port.DebitCardLinkRepository;
+import dev.bootcamp.yankiservice.application.port.DebitCardRepository;
+import dev.bootcamp.yankiservice.application.port.WalletRepository;
+import dev.bootcamp.yankiservice.domain.exception.BusinessRuleException;
+import dev.bootcamp.yankiservice.domain.exception.NotFoundException;
+import dev.bootcamp.yankiservice.domain.exception.OperationUnavailableException;
+import dev.bootcamp.yankiservice.domain.model.debitcard.DebitCard;
+import dev.bootcamp.yankiservice.domain.model.link.DebitCardLink;
+import dev.bootcamp.yankiservice.domain.model.link.LinkStatus;
+import dev.bootcamp.yankiservice.domain.model.operation.OperationId;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
+
+/**
+ * Implementación de {@link LinkDebitCardUseCase}.
+ */
+@RequiredArgsConstructor
+public class LinkDebitCardUseCaseImpl implements LinkDebitCardUseCase {
+    static final String CARD_ALREADY_LINKED =
+            &quot;La tarjeta de débito ya está asociada a un monedero&quot;;
+
+    private final DebitCardRepository debitCardRepository;
+    private final WalletRepository walletRepository;
+    private final DebitCardLinkRepository linkRepository;
+    private final AccountOperationPublisher operationPublisher;
+    private final Clock clock;
+
+    @Override
+    public Single&lt;DebitCardLink&gt; authorize(String customerId, String phone, String debitCardId) {
+<span class="fc" id="L38">        return ownedCard(customerId, debitCardId)</span>
+<span class="fc" id="L39">                .flatMap(card -&gt; ensureCardFree(debitCardId).andThen(Single.defer(() -&gt;</span>
+<span class="fc" id="L40">                        walletRepository.findByPhone(phone)</span>
+<span class="fc" id="L41">                                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(</span>
+                                        &quot;El celular &quot; + phone + &quot; no tiene monedero Yanki&quot;))))))
+<span class="fc" id="L43">                .flatMap(wallet -&gt; {</span>
+<span class="fc bfc" id="L44" title="All 2 branches covered.">                    if (wallet.hasDebitCard()) {</span>
+<span class="fc" id="L45">                        return Single.error(new BusinessRuleException(</span>
+                                &quot;El monedero ya tiene una tarjeta de débito asociada&quot;));
+                    }
+<span class="fc" id="L48">                    return linkRepository.save(new DebitCardLink(</span>
+                            customerId,
+                            debitCardId,
+<span class="fc" id="L51">                            wallet.getId(),</span>
+                            phone,
+<span class="fc" id="L53">                            LocalDate.now(clock)));</span>
+                });
+    }
+
+    @Override
+    public Single&lt;DebitCardLink&gt; confirm(String walletId, String linkId) {
+<span class="fc" id="L59">        return linkRepository.findById(linkId)</span>
+<span class="fc" id="L60">                .filter(link -&gt; link.getWalletId().equals(walletId))</span>
+<span class="fc" id="L61">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(</span>
+                        &quot;La asociación no existe o no es del monedero&quot;)))
+<span class="fc" id="L63">                .flatMap(link -&gt; {</span>
+<span class="fc bfc" id="L64" title="All 2 branches covered.">                    if (link.getStatus() != LinkStatus.PENDING_CONFIRMATION) {</span>
+<span class="fc" id="L65">                        return Single.error(new BusinessRuleException(</span>
+                                &quot;La asociación ya no está pendiente de confirmación&quot;));
+                    }
+<span class="fc" id="L68">                    return ensureCardFree(link.getDebitCardId())</span>
+<span class="fc" id="L69">                            .andThen(Single.defer(() -&gt; debitCardRepository</span>
+<span class="fc" id="L70">                                    .findById(link.getDebitCardId())</span>
+<span class="fc" id="L71">                                    .switchIfEmpty(Single.error(() -&gt; new BusinessRuleException(</span>
+                                            &quot;La tarjeta de débito no está disponible&quot;)))))
+<span class="fc" id="L73">                            .flatMap(card -&gt; start(link, card));</span>
+                });
+    }
+
+    private Single&lt;DebitCardLink&gt; start(DebitCardLink link, DebitCard card) {
+<span class="fc" id="L78">        return walletRepository.startLinking(link.getWalletId())</span>
+<span class="fc" id="L79">                .switchIfEmpty(Single.error(() -&gt; new BusinessRuleException(</span>
+                        &quot;El monedero no está disponible para asociar una tarjeta&quot;)))
+<span class="fc" id="L81">                .flatMap(balance -&gt; {</span>
+<span class="fc" id="L82">                    link.setTransferredBalance(balance);</span>
+<span class="fc bfc" id="L83" title="All 2 branches covered.">                    if (balance.signum() == 0) {</span>
+<span class="fc" id="L84">                        return walletRepository</span>
+<span class="fc" id="L85">                                .finishLinking(link.getWalletId(), link.getDebitCardId())</span>
+<span class="fc" id="L86">                                .andThen(Single.defer(() -&gt; {</span>
+<span class="fc" id="L87">                                    link.setStatus(LinkStatus.ACTIVE);</span>
+<span class="fc" id="L88">                                    return linkRepository.save(link);</span>
+                                }));
+                    }
+<span class="fc" id="L91">                    link.setStatus(LinkStatus.TRANSFERRING);</span>
+<span class="fc" id="L92">                    return linkRepository.save(link)</span>
+<span class="fc" id="L93">                            .flatMap(saved -&gt; transfer(saved, card.primaryAccountId(), balance));</span>
+                });
+    }
+
+    // Pide abonar el saldo a la cuenta principal; si no se puede, deshace la asociación.
+    private Single&lt;DebitCardLink&gt; transfer(
+            DebitCardLink link,
+            String accountId,
+            BigDecimal balance) {
+<span class="fc" id="L102">        return operationPublisher.requestCredit(</span>
+<span class="fc" id="L103">                        OperationId.linkTransfer(link.getId()).toString(),</span>
+                        accountId,
+                        balance,
+<span class="fc" id="L106">                        LocalDate.now(clock),</span>
+                        false)
+<span class="fc" id="L108">                .andThen(Single.just(link))</span>
+<span class="fc" id="L109">                .onErrorResumeNext(error -&gt; walletRepository</span>
+<span class="fc" id="L110">                        .cancelLinking(link.getWalletId(), balance)</span>
+<span class="fc" id="L111">                        .andThen(Single.defer(() -&gt; {</span>
+<span class="fc" id="L112">                            link.setStatus(LinkStatus.REJECTED);</span>
+<span class="fc" id="L113">                            link.setRejectionReason(SendPaymentUseCaseImpl.UNAVAILABLE);</span>
+<span class="fc" id="L114">                            return linkRepository.save(link);</span>
+                        }))
+<span class="fc" id="L116">                        .flatMap(rejected -&gt; Single.error(new OperationUnavailableException(</span>
+                                SendPaymentUseCaseImpl.UNAVAILABLE,
+                                error))));
+    }
+
+    private Single&lt;DebitCard&gt; ownedCard(String customerId, String debitCardId) {
+<span class="fc" id="L122">        return debitCardRepository.findById(debitCardId)</span>
+<span class="fc" id="L123">                .filter(card -&gt; card.belongsTo(customerId))</span>
+<span class="fc" id="L124">                .switchIfEmpty(Single.error(() -&gt; new NotFoundException(</span>
+                        &quot;La tarjeta de débito no existe o no pertenece al cliente&quot;)));
+    }
+
+    private Completable ensureCardFree(String debitCardId) {
+<span class="fc" id="L129">        return walletRepository.existsByDebitCardId(debitCardId)</span>
+<span class="fc bfc" id="L130" title="All 2 branches covered.">                .flatMapCompletable(linked -&gt; linked</span>
+<span class="fc" id="L131">                        ? Completable.error(new BusinessRuleException(CARD_ALREADY_LINKED))</span>
+<span class="fc" id="L132">                        : Completable.complete());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

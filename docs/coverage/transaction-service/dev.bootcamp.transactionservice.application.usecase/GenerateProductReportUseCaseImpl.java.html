@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GenerateProductReportUseCaseImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.application.usecase</a> &gt; <span class="el_source">GenerateProductReportUseCaseImpl.java</span></div><h1>GenerateProductReportUseCaseImpl.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.application.usecase;
+
+import dev.bootcamp.transactionservice.application.port.BankProductClient;
+import dev.bootcamp.transactionservice.application.port.ChargeRepository;
+import dev.bootcamp.transactionservice.application.port.MovementRepository;
+import dev.bootcamp.transactionservice.application.port.PaymentRepository;
+import dev.bootcamp.transactionservice.domain.model.report.ProductReport;
+import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.core.Single;
+import lombok.RequiredArgsConstructor;
+
+import java.time.LocalDate;
+
+/**
+ * Implementación de {@link GenerateProductReportUseCase}.
+ */
+@RequiredArgsConstructor
+public class GenerateProductReportUseCaseImpl implements GenerateProductReportUseCase {
+    private final BankProductClient bankProductClient;
+    private final MovementRepository movementRepository;
+    private final PaymentRepository paymentRepository;
+    private final ChargeRepository chargeRepository;
+
+    @Override
+    public Single&lt;ProductReport&gt; execute(LocalDate from, LocalDate to) {
+<span class="fc" id="L26">        return Completable.fromAction(() -&gt; ProductReport.validateInterval(from, to))</span>
+<span class="fc" id="L27">                .andThen(Single.defer(() -&gt; Single.zip(</span>
+<span class="fc" id="L28">                        bankProductClient.findAll().toList(),</span>
+<span class="fc" id="L29">                        movementRepository.findByDateBetween(from, to).toList(),</span>
+<span class="fc" id="L30">                        paymentRepository.findByDateBetween(from, to).toList(),</span>
+<span class="fc" id="L31">                        chargeRepository.findByDateBetween(from, to).toList(),</span>
+<span class="fc" id="L32">                        (products, movements, payments, charges) -&gt; ProductReport.generate(</span>
+                                from,
+                                to,
+                                products,
+                                movements,
+                                payments,
+                                charges))));
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

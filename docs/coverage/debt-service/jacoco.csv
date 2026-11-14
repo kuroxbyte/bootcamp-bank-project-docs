@@ -1,0 +1,15 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+debt-service,dev.bootcamp.debtservice.infrastructure.messaging,CreditEventListener,0,77,0,3,0,16,0,4,0,2
+debt-service,dev.bootcamp.debtservice.infrastructure.messaging,DebtKafkaEventPublisher,0,91,0,0,0,17,0,4,0,4
+debt-service,dev.bootcamp.debtservice.infrastructure.messaging,TransactionEventListener,0,82,0,4,0,19,0,4,0,2
+debt-service,dev.bootcamp.debtservice.infrastructure.scheduling,DailyDebtEvaluation,0,26,0,0,0,9,0,4,0,4
+debt-service,dev.bootcamp.debtservice.domain.model,Credit,0,15,0,0,0,1,0,1,0,1
+debt-service,dev.bootcamp.debtservice.domain.model,DebtMovementType,0,21,0,0,0,4,0,1,0,1
+debt-service,dev.bootcamp.debtservice.domain.model,DebtMovement,0,21,0,0,0,1,0,1,0,1
+debt-service,dev.bootcamp.debtservice.domain.model,CustomerDebtStatus,0,17,0,2,0,2,0,3,0,2
+debt-service,dev.bootcamp.debtservice.domain.model,CustomerDebt,0,177,2,22,0,28,2,19,0,9
+debt-service,dev.bootcamp.debtservice.domain.model,CreditCard,0,12,0,0,0,1,0,1,0,1
+debt-service,dev.bootcamp.debtservice.application.usecase,EvaluateDebtUseCaseImpl,0,63,0,2,0,12,0,8,0,7
+debt-service,dev.bootcamp.debtservice.application.usecase,RecordDebtEventUseCaseImpl,6,42,0,0,1,8,1,5,1,5
+debt-service,dev.bootcamp.debtservice.infrastructure.persistence,DebtStatusPersistenceAdapter,0,22,0,0,0,6,0,2,0,2
+debt-service,dev.bootcamp.debtservice.infrastructure.persistence,DebtPersistenceAdapter,0,155,0,0,0,48,0,9,0,9

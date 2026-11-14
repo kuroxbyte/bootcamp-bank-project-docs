@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RecordDebtEventUseCaseImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">debt-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.debtservice.application.usecase</a> &gt; <span class="el_source">RecordDebtEventUseCaseImpl.java</span></div><h1>RecordDebtEventUseCaseImpl.java</h1><pre class="source lang-java linenums">package dev.bootcamp.debtservice.application.usecase;
+
+import dev.bootcamp.debtservice.application.port.DebtRepository;
+import dev.bootcamp.debtservice.domain.model.Credit;
+import dev.bootcamp.debtservice.domain.model.CreditCard;
+import dev.bootcamp.debtservice.domain.model.DebtMovement;
+import io.reactivex.rxjava3.core.Completable;
+import lombok.RequiredArgsConstructor;
+
+/**
+ * Implementación de {@link RecordDebtEventUseCase}.
+ */
+@RequiredArgsConstructor
+public class RecordDebtEventUseCaseImpl implements RecordDebtEventUseCase {
+    private final DebtRepository debtRepository;
+    private final EvaluateDebtUseCase evaluateDebtUseCase;
+
+    @Override
+    public Completable recordCredit(Credit credit) {
+<span class="fc" id="L20">        return debtRepository.saveCredit(credit)</span>
+<span class="fc" id="L21">                .andThen(Completable.defer(</span>
+<span class="fc" id="L22">                        () -&gt; evaluateDebtUseCase.evaluate(credit.customerId())));</span>
+    }
+
+    @Override
+    public Completable recordCreditCard(CreditCard creditCard) {
+<span class="fc" id="L27">        return debtRepository.saveCreditCard(creditCard)</span>
+<span class="fc" id="L28">                .andThen(Completable.defer(</span>
+<span class="fc" id="L29">                        () -&gt; evaluateDebtUseCase.evaluate(creditCard.customerId())));</span>
+    }
+
+    @Override
+    public Completable recordMovement(DebtMovement movement) {
+<span class="fc" id="L34">        return debtRepository.saveMovement(movement)</span>
+<span class="fc" id="L35">                .andThen(Completable.defer(</span>
+<span class="nc" id="L36">                        () -&gt; evaluateDebtUseCase.evaluate(movement.customerId())));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

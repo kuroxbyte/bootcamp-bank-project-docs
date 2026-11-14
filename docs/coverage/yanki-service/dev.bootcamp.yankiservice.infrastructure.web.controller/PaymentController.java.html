@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PaymentController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">yanki-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.yankiservice.infrastructure.web.controller</a> &gt; <span class="el_source">PaymentController.java</span></div><h1>PaymentController.java</h1><pre class="source lang-java linenums">package dev.bootcamp.yankiservice.infrastructure.web.controller;
+
+import dev.bootcamp.yankiservice.application.usecase.GetWalletUseCase;
+import dev.bootcamp.yankiservice.application.usecase.SendPaymentUseCase;
+import dev.bootcamp.yankiservice.domain.model.payment.PaymentStatus;
+import dev.bootcamp.yankiservice.infrastructure.web.api.PaymentsApi;
+import dev.bootcamp.yankiservice.infrastructure.web.dto.PaymentRequestDto;
+import dev.bootcamp.yankiservice.infrastructure.web.dto.PaymentResponseDto;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+import java.time.Clock;
+import java.time.LocalDate;
+
+/**
+ * Endpoints de pagos definidos en el contrato OpenAPI. Un pago completado en el momento responde
+ * 201; uno que espera a una cuenta bancaria, 202.
+ */
+<span class="fc" id="L25">@Slf4j</span>
+@RestController
+@RequiredArgsConstructor
+public class PaymentController implements PaymentsApi {
+
+    private final SendPaymentUseCase sendPaymentUseCase;
+    private final GetWalletUseCase getWalletUseCase;
+    private final Clock clock;
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;PaymentResponseDto&gt;&gt; sendPayment(
+            String xwalletId,
+            Mono&lt;PaymentRequestDto&gt; paymentRequestDto,
+            ServerWebExchange exchange) {
+<span class="fc" id="L39">        return paymentRequestDto</span>
+<span class="fc" id="L40">                .flatMap(request -&gt; Mono.from(sendPaymentUseCase</span>
+<span class="fc" id="L41">                        .execute(</span>
+                                xwalletId,
+<span class="fc" id="L43">                                request.getToPhone(),</span>
+<span class="fc" id="L44">                                request.getAmount(),</span>
+<span class="fc" id="L45">                                LocalDate.now(clock))</span>
+<span class="fc" id="L46">                        .toFlowable()))</span>
+<span class="fc" id="L47">                .doOnNext(payment -&gt; log.info(</span>
+                        &quot;Payment sent paymentId={} status={}&quot;,
+<span class="fc" id="L49">                        payment.getId(),</span>
+<span class="fc" id="L50">                        payment.getStatus()))</span>
+<span class="fc" id="L51">                .map(payment -&gt; ResponseEntity</span>
+<span class="fc bfc" id="L52" title="All 2 branches covered.">                        .status(payment.getStatus() == PaymentStatus.COMPLETED</span>
+<span class="fc" id="L53">                                ? HttpStatus.CREATED</span>
+<span class="fc" id="L54">                                : HttpStatus.ACCEPTED)</span>
+<span class="fc" id="L55">                        .body(YankiWebMapper.toDto(payment)));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;Flux&lt;PaymentResponseDto&gt;&gt;&gt; listPayments(
+            String xwalletId,
+            ServerWebExchange exchange) {
+<span class="fc" id="L62">        return Mono.just(ResponseEntity.ok(Flux.from(getWalletUseCase</span>
+<span class="fc" id="L63">                .findPayments(xwalletId)</span>
+<span class="fc" id="L64">                .map(YankiWebMapper::toDto))));</span>
+    }
+
+    @Override
+    public Mono&lt;ResponseEntity&lt;PaymentResponseDto&gt;&gt; getPayment(
+            String xwalletId,
+            String paymentId,
+            ServerWebExchange exchange) {
+<span class="fc" id="L72">        return Mono.from(getWalletUseCase.findPayment(xwalletId, paymentId).toFlowable())</span>
+<span class="fc" id="L73">                .map(payment -&gt; ResponseEntity.ok(YankiWebMapper.toDto(payment)));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

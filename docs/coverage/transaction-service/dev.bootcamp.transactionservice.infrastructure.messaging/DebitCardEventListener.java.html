@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DebitCardEventListener.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.infrastructure.messaging</a> &gt; <span class="el_source">DebitCardEventListener.java</span></div><h1>DebitCardEventListener.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.infrastructure.messaging;
+
+import dev.bootcamp.transactionservice.application.usecase.SaveDebitCardUseCase;
+import dev.bootcamp.transactionservice.domain.model.debitcard.DebitCard;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+
+import java.util.Set;
+
+/**
+ * Consume el tópico {@code debit-card-events} de account-service y guarda cada tarjeta en la copia
+ * local. Cada evento trae el estado completo de la tarjeta. El contrato está en
+ * {@code docs/events/asyncapi.yaml} del repositorio raíz.
+ *
+ * &lt;p&gt;Ignora los tipos de evento que no conoce. Si guardar falla, la excepción hace que Kafka
+ * vuelva a entregar el mensaje.
+ */
+<span class="fc" id="L22">@Slf4j</span>
+@Component
+@RequiredArgsConstructor
+public class DebitCardEventListener {
+
+<span class="fc" id="L27">    private static final Set&lt;String&gt; CARD_EVENTS =</span>
+<span class="fc" id="L28">            Set.of(&quot;DebitCardIssued&quot;, &quot;DebitCardAccountsUpdated&quot;);</span>
+
+    private final SaveDebitCardUseCase saveDebitCardUseCase;
+    private final JsonMapper jsonMapper;
+
+    /**
+     * Procesa un evento del tópico de tarjetas de débito.
+     *
+     * @param message evento en JSON
+     */
+    @KafkaListener(topics = &quot;${messaging.topics.debit-card-events}&quot;)
+    public void onDebitCardEvent(String message) {
+<span class="fc" id="L40">        JsonNode event = jsonMapper.readTree(message);</span>
+<span class="fc" id="L41">        String eventType = event.path(&quot;eventType&quot;).asString();</span>
+<span class="fc bfc" id="L42" title="All 2 branches covered.">        if (!CARD_EVENTS.contains(eventType)) {</span>
+<span class="fc" id="L43">            log.debug(&quot;Ignoring debit card event type={}&quot;, eventType);</span>
+<span class="fc" id="L44">            return;</span>
+        }
+<span class="fc" id="L46">        DebitCard card = new DebitCard(</span>
+<span class="fc" id="L47">                event.get(&quot;debitCardId&quot;).asString(),</span>
+<span class="fc" id="L48">                event.get(&quot;customerId&quot;).asString(),</span>
+<span class="fc" id="L49">                event.get(&quot;primaryAccountId&quot;).asString());</span>
+<span class="fc" id="L50">        saveDebitCardUseCase.execute(card).blockingAwait();</span>
+<span class="fc" id="L51">        log.info(&quot;{} saved debitCardId={}&quot;, eventType, card.id());</span>
+<span class="fc" id="L52">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>

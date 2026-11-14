@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="es"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SavingsMovementPolicy.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">transaction-service</a> &gt; <a href="index.source.html" class="el_package">dev.bootcamp.transactionservice.domain.model.account</a> &gt; <span class="el_source">SavingsMovementPolicy.java</span></div><h1>SavingsMovementPolicy.java</h1><pre class="source lang-java linenums">package dev.bootcamp.transactionservice.domain.model.account;
+
+import dev.bootcamp.transactionservice.domain.exception.BusinessRuleException;
+import dev.bootcamp.transactionservice.domain.model.movement.Movement;
+
+/**
+ * Cuenta de ahorro: se permite un movimiento mientras {@code movementsInMonth} sea menor que {@code
+ * maxMonthlyMovements}. Por ejemplo, con un límite de 2 se aceptan el 1.º y el 2.º movimiento del
+ * mes y se rechaza el 3.º.
+ */
+<span class="fc" id="L11">public record SavingsMovementPolicy(int maxMonthlyMovements) implements MovementPolicy {</span>
+
+    /**
+     * Valida el movimiento según la regla de este tipo de cuenta.
+     *
+     * @throws BusinessRuleException si ya se alcanzó el límite mensual de movimientos
+     */
+    @Override
+    public void validate(Movement movement, long movementsInMonth) {
+<span class="fc bfc" id="L20" title="All 2 branches covered.">        if (movementsInMonth &gt;= maxMonthlyMovements) {</span>
+<span class="fc" id="L21">            throw new BusinessRuleException(</span>
+                    &quot;Se alcanzó el límite de &quot; + maxMonthlyMovements + &quot; movimientos mensuales&quot;);
+        }
+<span class="fc" id="L24">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.16.202610240946</span></div></body></html>
