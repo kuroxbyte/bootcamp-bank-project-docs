@@ -191,8 +191,10 @@ reemplaza igual la copia y el acceso de ese celular.
 Al arrancar, account-service y yanki-service ponen los índices de MongoDB al día con sus
 anotaciones (`IndexMigration`): si un índice existe con otras opciones (`unique` o `sparse`), lo
 recrean. Así, una base de datos existente recibe sin pasos manuales los índices dispersos de
-`debit_cards.accountIds` y `wallets.phone`. Se desactiva con
-`mongodb.index-migration.on-startup=false`.
+`debit_cards.accountIds` y `wallets.phone`. En estos dos servicios la creación automática de
+índices de Spring está desactivada (no puede modificar un índice existente y registraba un error),
+así que la migración es la que crea todos sus índices; si se desactiva con
+`mongodb.index-migration.on-startup=false`, los índices no se crean.
 
 ## Comisiones mensuales
 
